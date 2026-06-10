@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, Alert } from 'react-native';
+import { StyleSheet, Alert } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import PlanScreen from './src/screens/PlanScreen';
 import RouteScreen from './src/screens/RouteScreen';
@@ -60,18 +61,20 @@ export default function App() {
   }
 
   return (
-    <LinearGradient colors={theme.sky} style={styles.root}>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar style="dark" />
-        {screen}
-        <SettingsModal
-          visible={settingsOpen}
-          settings={settings}
-          onChange={updateSettings}
-          onClose={() => setSettingsOpen(false)}
-        />
-      </SafeAreaView>
-    </LinearGradient>
+    <SafeAreaProvider>
+      <LinearGradient colors={theme.sky} style={styles.root}>
+        <SafeAreaView style={styles.safe}>
+          <StatusBar style="dark" />
+          {screen}
+          <SettingsModal
+            visible={settingsOpen}
+            settings={settings}
+            onChange={updateSettings}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </SafeAreaView>
+      </LinearGradient>
+    </SafeAreaProvider>
   );
 }
 
