@@ -72,8 +72,9 @@ Settings).
 
 ## Theme
 
-The UI is themed after a dusk run: a sky gradient (pale blue → cream → peach) over
-dark evergreen. Colors live in `src/theme.js`.
+iOS-native look: system-style neutral surfaces with a dark evergreen accent, and
+Liquid Glass (frosted-blur fallback) on everything floating over the map. Colors
+live in `src/theme.js`.
 
 ## Extending
 

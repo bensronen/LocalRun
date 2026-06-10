@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import PlanScreen from './src/screens/PlanScreen';
 import RouteScreen from './src/screens/RouteScreen';
 import RunScreen from './src/screens/RunScreen';
@@ -62,23 +61,20 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <LinearGradient colors={theme.sky} style={styles.root}>
-        <SafeAreaView style={styles.safe}>
-          <StatusBar style="dark" />
-          {screen}
-          <SettingsModal
-            visible={settingsOpen}
-            settings={settings}
-            onChange={updateSettings}
-            onClose={() => setSettingsOpen(false)}
-          />
-        </SafeAreaView>
-      </LinearGradient>
+      <SafeAreaView style={styles.root}>
+        <StatusBar style="dark" />
+        {screen}
+        <SettingsModal
+          visible={settingsOpen}
+          settings={settings}
+          onChange={updateSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.bg },
-  safe: { flex: 1 },
 });

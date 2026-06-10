@@ -1,28 +1,27 @@
-// LocalRun theme: a dusk sky fading from pale blue through cream to peach,
-// over dark evergreen hills. `sky` is the app background gradient (top -> bottom);
-// dark green carries text, buttons, and accents.
+// LocalRun theme: iOS-neutral surfaces — system-style grouped background and
+// white cards — with the dusk palette surviving in the dark evergreen accent
+// (and the category pin colors in src/data/categories.js).
 export const theme = {
-  sky: ['#aec7de', '#d7d9d2', '#f2e4c4', '#f4cb9d', '#eda87e'],
-  bg: '#ece4d0', // fallback for surfaces the gradient doesn't reach
-  card: '#fdf9ef',
-  cardAlt: '#f3ebd9',
-  text: '#1d3527',
-  textDim: '#5f7163',
+  bg: '#f2f2f7', // iOS systemGroupedBackground
+  card: '#ffffff',
+  cardAlt: '#f2f2f7',
+  text: '#1c1c1e',
+  textDim: '#6e6e73',
   accent: '#2c5e40',
   accentDeep: '#1e4a30',
   good: '#3c7a52',
-  border: 'rgba(29, 53, 39, 0.12)',
+  border: 'rgba(60, 60, 67, 0.12)', // iOS separator
   tint: 'rgba(44, 94, 64, 0.12)', // accent wash for tinted buttons & segmented tracks
   danger: '#b9543f',
-  onAccent: '#f7f1e3', // text on accent/good buttons
+  onAccent: '#ffffff', // text on accent/good buttons
 };
 
-// Soft elevation for cards and buttons — surfaces float on the gradient
+// Soft elevation for cards and buttons — surfaces float on the background
 // instead of being outlined.
 export const shadow = {
-  shadowColor: '#1d3527',
+  shadowColor: '#000000',
   shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
+  shadowOpacity: 0.06,
   shadowRadius: 10,
   elevation: 2,
 };

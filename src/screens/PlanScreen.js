@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   cityBtnChevron: { color: theme.textDim, fontSize: 13, fontWeight: '700' },
   cityBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(20, 38, 27, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'flex-start',
     paddingTop: 130,
     paddingHorizontal: 18,

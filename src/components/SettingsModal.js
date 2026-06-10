@@ -55,7 +55,7 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(20, 38, 27, 0.4)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'flex-end' },
   sheet: {
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,

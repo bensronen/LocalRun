@@ -34,7 +34,7 @@ export default function Glass({ style, children, isInteractive = false, ...rest 
     );
   }
   return (
-    <View style={[style, { backgroundColor: 'rgba(253, 249, 239, 0.93)' }]} {...rest}>
+    <View style={[style, { backgroundColor: 'rgba(255, 255, 255, 0.93)' }]} {...rest}>
       {children}
     </View>
   );
