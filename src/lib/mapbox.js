@@ -7,6 +7,15 @@ const BASE = 'https://api.mapbox.com';
 // Default geocoding bias if a city bbox isn't supplied (NYC).
 const DEFAULT_BBOX = '-74.2591,40.4774,-73.7004,40.9176';
 
+// Mapbox's bbox param is a hard FILTER, and city data bboxes hug the scenic
+// core — a legit metro address (a house in Coconut Grove, say) can sit outside
+// it. Pad generously for geocoding; `proximity` keeps results local anyway.
+function geocodeBbox(bbox, pad = 0.15) {
+  if (!Array.isArray(bbox)) return bbox || DEFAULT_BBOX;
+  const [w, s, e, n] = bbox;
+  return [w - pad, s - pad, e + pad, n + pad].join(',');
+}
+
 export function hasToken() {
   return !!TOKEN && TOKEN.length > 20 && !TOKEN.includes('YOUR_');
 }
@@ -88,12 +97,11 @@ export async function getManeuvers(routeCoords, profile = 'walking') {
 // suggestions are best-effort and must never alert.
 export async function geocodeSuggest(query, proximity, bbox, limit = 5) {
   if (!hasToken() || !query.trim()) return [];
-  const bboxStr = Array.isArray(bbox) ? bbox.join(',') : bbox || DEFAULT_BBOX;
   const params = new URLSearchParams({
     access_token: TOKEN,
     autocomplete: 'true',
     limit: String(limit),
-    bbox: bboxStr,
+    bbox: geocodeBbox(bbox),
   });
   if (proximity) params.set('proximity', `${proximity.lng},${proximity.lat}`);
   const url =
@@ -117,11 +125,10 @@ export async function geocodeSuggest(query, proximity, bbox, limit = 5) {
 // string). Returns null if nothing found.
 export async function geocode(query, proximity, bbox) {
   if (!hasToken()) throw new Error('Add EXPO_PUBLIC_MAPBOX_TOKEN to .env.');
-  const bboxStr = Array.isArray(bbox) ? bbox.join(',') : bbox || DEFAULT_BBOX;
   const params = new URLSearchParams({
     access_token: TOKEN,
     limit: '1',
-    bbox: bboxStr,
+    bbox: geocodeBbox(bbox),
   });
   if (proximity) params.set('proximity', `${proximity.lng},${proximity.lat}`);
   const url =

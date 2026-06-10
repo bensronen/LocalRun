@@ -124,7 +124,7 @@ export const CITIES = {
     name: 'Miami',
     emoji: '🌴',
     center: { lat: 25.7743, lng: -80.1937 },
-    bbox: [-80.21, 25.74, -80.12, 25.81],
+    bbox: [-80.32, 25.69, -80.1, 25.87],
     primaryZone: 'miami',
     // Miami Beach sits across Biscayne Bay on the barrier island to the east.
     zones: [{ name: 'miami-beach', test: (lat, lng) => lng > -80.16 }],
