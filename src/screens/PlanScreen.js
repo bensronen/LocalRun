@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -26,6 +27,7 @@ const VIBES = [
 
 export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   const [city, setCity] = useState(CITIES[0]);
+  const [cityOpen, setCityOpen] = useState(false);
   const [start, setStart] = useState(CITIES[0].defaultStart);
   const [address, setAddress] = useState('');
   const [distanceKm, setDistanceKm] = useState(5);
@@ -127,24 +129,35 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       </View>
 
       {/* City selector */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.cityRow}
-        contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
-      >
-        {CITIES.map((c) => (
-          <TouchableOpacity
-            key={c.id}
-            style={[styles.cityChip, c.id === city.id && styles.cityChipActive]}
-            onPress={() => switchCity(c)}
-          >
-            <Text style={[styles.cityChipText, c.id === city.id && styles.cityChipTextActive]}>
-              {c.emoji} {c.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <TouchableOpacity style={styles.cityBtn} onPress={() => setCityOpen(true)}>
+        <Text style={styles.cityBtnText}>
+          {city.emoji} {city.name}
+        </Text>
+        <Text style={styles.cityBtnChevron}>▾</Text>
+      </TouchableOpacity>
+      <Modal visible={cityOpen} transparent animationType="fade" onRequestClose={() => setCityOpen(false)}>
+        <TouchableOpacity style={styles.cityBackdrop} activeOpacity={1} onPress={() => setCityOpen(false)}>
+          <View style={styles.cityMenu}>
+            <ScrollView bounces={false}>
+              {CITIES.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.cityItem, c.id === city.id && styles.cityItemActive]}
+                  onPress={() => {
+                    switchCity(c);
+                    setCityOpen(false);
+                  }}
+                >
+                  <Text style={[styles.cityItemText, c.id === city.id && styles.cityItemTextActive]}>
+                    {c.emoji} {c.name}
+                  </Text>
+                  {c.id === city.id && <Text style={styles.cityCheck}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Start */}
       <Text style={styles.label}>Where are you staying?</Text>
@@ -313,18 +326,47 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   gearIcon: { color: theme.textDim, fontSize: 20 },
-  cityRow: { marginBottom: 4 },
-  cityChip: {
+  cityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: theme.border,
   },
-  cityChipActive: { borderColor: theme.accent, backgroundColor: theme.cardAlt },
-  cityChipText: { color: theme.textDim, fontWeight: '700', fontSize: 14 },
-  cityChipTextActive: { color: theme.accent },
+  cityBtnText: { color: theme.text, fontWeight: '700', fontSize: 16 },
+  cityBtnChevron: { color: theme.accent, fontSize: 14, fontWeight: '800' },
+  cityBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(20, 38, 27, 0.35)',
+    justifyContent: 'flex-start',
+    paddingTop: 130,
+    paddingHorizontal: 18,
+  },
+  cityMenu: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    maxHeight: 420,
+    overflow: 'hidden',
+  },
+  cityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
+  },
+  cityItemActive: { backgroundColor: theme.cardAlt },
+  cityItemText: { color: theme.text, fontWeight: '600', fontSize: 15 },
+  cityItemTextActive: { color: theme.accent, fontWeight: '800' },
+  cityCheck: { color: theme.accent, fontWeight: '800', fontSize: 15 },
   label: { color: theme.text, fontSize: 16, fontWeight: '700', marginTop: 18, marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8 },
   input: {
