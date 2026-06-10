@@ -8,10 +8,14 @@ import {
   Alert,
   Share,
   StyleSheet,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useTheme, themedStyles, fmt, shadow } from '../theme';
-import { loadRuns, deleteRun } from '../lib/history';
+import { loadRuns, deleteRun, updatePhotoCaption } from '../lib/history';
 import { formatClock, formatPace } from '../lib/nav';
 
 function dateLabel(ts) {
@@ -97,6 +101,23 @@ function RunDetail({ run, onBack, onDelete }) {
   const unitM = run.unit === 'mi' ? 1609.34 : 1000;
   const avgPace = run.distM > 30 ? run.elapsed / (run.distM / unitM) : NaN;
 
+  // local copy so caption edits show immediately
+  const [photos, setPhotos] = useState(run.photos || []);
+  const [viewer, setViewer] = useState(null); // photo being viewed full-screen
+  const [captionDraft, setCaptionDraft] = useState('');
+
+  function openPhoto(p) {
+    setViewer(p);
+    setCaptionDraft(p.caption || '');
+  }
+
+  async function saveCaption() {
+    const caption = captionDraft.trim();
+    await updatePhotoCaption(run.id, viewer.ts, caption);
+    setPhotos((ps) => ps.map((p) => (p.ts === viewer.ts ? { ...p, caption } : p)));
+    setViewer(null);
+  }
+
   async function share() {
     const photoLine = (run.photos || []).length
       ? `\n📷 ${run.photos.length} sight${run.photos.length === 1 ? '' : 's'} captured`
@@ -144,7 +165,7 @@ function RunDetail({ run, onBack, onDelete }) {
             }}
           >
             <Polyline coordinates={run.coords} strokeColor={theme.accent} strokeWidth={4} />
-            {(run.photos || [])
+            {photos
               .filter((p) => p.lat != null)
               .map((p) => (
                 <Marker key={p.ts} coordinate={{ latitude: p.lat, longitude: p.lng }}>
@@ -189,23 +210,51 @@ function RunDetail({ run, onBack, onDelete }) {
         </>
       )}
 
-      {(run.photos || []).length > 0 && (
+      {photos.length > 0 && (
         <>
           <Text style={styles.sectionLabel}>Sights you captured</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
-            {run.photos.map((p) => (
-              <View key={p.ts} style={styles.photoCard}>
+            {photos.map((p) => (
+              <TouchableOpacity key={p.ts} style={styles.photoCard} onPress={() => openPhoto(p)}>
                 <Image source={{ uri: p.uri }} style={styles.photo} />
-                {!!p.placeName && (
+                {!!(p.caption || p.placeName) && (
                   <Text style={styles.photoLabel} numberOfLines={1}>
-                    {p.placeName}
+                    {p.caption || p.placeName}
                   </Text>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </>
       )}
+
+      {/* Full-screen photo viewer with caption editing */}
+      <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
+        <KeyboardAvoidingView
+          style={styles.viewerBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <TouchableOpacity style={styles.viewerClose} onPress={() => setViewer(null)}>
+            <Text style={styles.viewerCloseText}>✕</Text>
+          </TouchableOpacity>
+          {viewer && <Image source={{ uri: viewer.uri }} style={styles.viewerImage} resizeMode="contain" />}
+          {!!viewer?.placeName && <Text style={styles.viewerPlace}>📍 {viewer.placeName}</Text>}
+          <View style={styles.viewerCaptionRow}>
+            <TextInput
+              style={styles.viewerInput}
+              placeholder="Add a caption…"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              value={captionDraft}
+              onChangeText={setCaptionDraft}
+              returnKeyType="done"
+              onSubmitEditing={saveCaption}
+            />
+            <TouchableOpacity style={styles.viewerSave} onPress={saveCaption}>
+              <Text style={styles.viewerSaveText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <TouchableOpacity style={styles.shareBtn} onPress={share}>
         <Text style={styles.shareText}>Share run</Text>
@@ -295,6 +344,50 @@ const getStyles = themedStyles((theme) => ({
   photoCard: { marginRight: 10, marginTop: 8, width: 140 },
   photo: { width: 140, height: 140, borderRadius: 12, backgroundColor: theme.cardAlt },
   photoLabel: { color: theme.textDim, fontSize: 12, marginTop: 4 },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
+    justifyContent: 'center',
+    paddingBottom: 24,
+  },
+  viewerClose: {
+    position: 'absolute',
+    top: 56,
+    right: 20,
+    zIndex: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerCloseText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  viewerImage: { flex: 1, marginTop: 70, marginBottom: 12 },
+  viewerPlace: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  viewerCaptionRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
+  viewerInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    color: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+  },
+  viewerSave: {
+    backgroundColor: theme.accent,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    justifyContent: 'center',
+  },
+  viewerSaveText: { color: theme.onAccent, fontWeight: '600', fontSize: 15 },
   shareBtn: {
     backgroundColor: theme.accent,
     borderRadius: 14,

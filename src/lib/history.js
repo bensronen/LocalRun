@@ -30,6 +30,20 @@ export async function saveRun(record) {
   return runs;
 }
 
+// Set/replace a photo's caption on a saved run (photos are keyed by ts).
+export async function updatePhotoCaption(runId, photoTs, caption) {
+  const runs = await loadRuns();
+  const run = runs.find((r) => r.id === runId);
+  if (!run) return runs;
+  run.photos = (run.photos || []).map((p) => (p.ts === photoTs ? { ...p, caption } : p));
+  try {
+    await AsyncStorage.setItem(RUNS_KEY, JSON.stringify(runs));
+  } catch {
+    // ignore persistence errors
+  }
+  return runs;
+}
+
 export async function deleteRun(id) {
   const runs = (await loadRuns()).filter((r) => r.id !== id);
   try {

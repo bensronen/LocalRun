@@ -105,6 +105,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
       const uri = await persistPhoto(res.assets[0].uri);
       const cur = eng.prev;
       const near = cur ? nearestHighlight(cur, highlights) : null;
+      const ts = Date.now();
       setPhotos((p) => [
         ...p,
         {
@@ -113,12 +114,33 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
           lng: cur ? cur.longitude : null,
           placeId: near ? near.id : null,
           placeName: near ? near.name : null,
-          ts: Date.now(),
+          caption: '',
+          ts,
         },
       ]);
       success();
       if (near) {
         showCallout(near.name, 'Photo saved — spots you shoot rank higher in future routes.');
+      }
+      // Quick optional caption (editable later from run history).
+      if (Platform.OS === 'ios') {
+        Alert.prompt(
+          'Caption this photo?',
+          near ? near.name : 'Shows with the photo in your run history.',
+          [
+            { text: 'Skip', style: 'cancel' },
+            {
+              text: 'Save',
+              onPress: (text) => {
+                const caption = (text || '').trim();
+                if (caption) {
+                  setPhotos((p) => p.map((ph) => (ph.ts === ts ? { ...ph, caption } : ph)));
+                }
+              },
+            },
+          ],
+          'plain-text'
+        );
       }
     } catch (e) {
       Alert.alert('Could not take photo', e.message);
@@ -172,7 +194,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
       const cur = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       setPos(cur);
       if (mapRef.current) {
-        mapRef.current.animateCamera({ center: cur, zoom: 16.5 }, { duration: 600 });
+        mapRef.current.animateCamera({ center: cur, zoom: 17.5 }, { duration: 600 });
       }
       const e = (Date.now() - eng.startMs - eng.pausedMs) / 1000;
 
@@ -312,8 +334,8 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
         initialRegion={{
           latitude: start.lat,
           longitude: start.lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: 0.004,
+          longitudeDelta: 0.004,
         }}
       >
         <Polyline coordinates={routeCoords} strokeColor={theme.accent} strokeWidth={6} />
