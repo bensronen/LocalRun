@@ -39,3 +39,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local secrets
+.env
+
+# pipeline scratch
+pipeline/raw/
+pipeline/out/
+pipeline/final/
