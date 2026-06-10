@@ -18,7 +18,8 @@ import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
 import { geocode, geocodeSuggest, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
-import { loadBoosts } from '../lib/history';
+import { loadBoosts, loadRuns } from '../lib/history';
+import { fetchCommunity, mergeBoosts } from '../lib/api';
 import { tap } from '../lib/haptics';
 import { CITIES, cityForPoint } from '../data/cities';
 
@@ -28,6 +29,22 @@ const VIBES = [
   { key: 'landmarks', label: 'Landmarks' },
   { key: 'neighborhoods', label: 'Neighborhoods' },
 ];
+
+// You've completed runs here before — revisit favorites or hunt new ground?
+function askExplore(seenCount) {
+  return new Promise((resolve) =>
+    Alert.alert(
+      "You've run here before",
+      `${seenCount} sights already in your history. What's the mood today?`,
+      [
+        { text: 'Something new', onPress: () => resolve('new') },
+        { text: 'Revisit favorites', onPress: () => resolve('revisit') },
+        { text: 'Surprise me', style: 'cancel', onPress: () => resolve(null) },
+      ],
+      { cancelable: false }
+    )
+  );
+}
 
 export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings, onOpenHistory }) {
   const theme = useTheme();
@@ -48,6 +65,17 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
   const suggestTimer = useRef(null);
   const suggestSeq = useRef(0);
   useEffect(() => () => clearTimeout(suggestTimer.current), []);
+
+  // Community pulse for the selected city (cached; null when no backend).
+  const [community, setCommunity] = useState(null);
+  useEffect(() => {
+    let live = true;
+    setCommunity(null);
+    fetchCommunity(city.id).then((c) => live && setCommunity(c));
+    return () => {
+      live = false;
+    };
+  }, [city.id]);
 
   // Report the whole plan upward so leaving this screen (or the app) never
   // loses what was set up here.
@@ -158,16 +186,23 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
     }
     try {
       setBusy(true);
+      // Your taste + the community's: photographed and loved places rank higher.
+      const boosts = mergeBoosts(await loadBoosts(), community);
+      // If completed runs here already cover some sights, ask for the mood.
+      const cityRuns = (await loadRuns()).filter((r) => r.cityId === city.id);
+      const seen = [...new Set(cityRuns.flatMap((r) => r.seen || []))];
+      const explore = seen.length >= 3 ? await askExplore(seen.length) : null;
       const plan = {
         distanceKm,
         shape,
         vibe: vibeFromChips(vibes),
         profile: 'walking',
-        // places you've photographed or rated well rank higher
-        boosts: await loadBoosts(),
+        boosts,
+        seen,
+        explore,
       };
       const result = await buildRoute(start, plan, city);
-      onRouteBuilt({ ...result, start, unit, plan, city });
+      onRouteBuilt({ ...result, start, unit, plan, city, community });
     } catch (e) {
       Alert.alert('Could not build a route', e.message);
     } finally {
@@ -226,6 +261,20 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
           </Glass>
         </TouchableOpacity>
       </Modal>
+
+      {/* Community pulse */}
+      {community?.totalRuns > 0 && (
+        <View style={styles.pulse}>
+          <Text style={styles.pulseText} numberOfLines={2}>
+            🏃 {community.totalRuns} {community.totalRuns === 1 ? 'run' : 'runs'} by the community
+            {community.top?.length
+              ? ` · 📷 most shot: ${
+                  city.places.find((p) => p.id === community.top[0].id)?.name || community.top[0].id
+                }`
+              : ''}
+          </Text>
+        </View>
+      )}
 
       {/* Start */}
       <Text style={styles.label}>Start from</Text>
@@ -459,6 +508,14 @@ const getStyles = themedStyles((theme) => ({
   cityItemText: { color: theme.text, fontWeight: '500', fontSize: 16 },
   cityItemTextActive: { color: theme.accent, fontWeight: '700' },
   cityCheck: { color: theme.accent, fontWeight: '700', fontSize: 15 },
+  pulse: {
+    backgroundColor: theme.tint,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 10,
+  },
+  pulseText: { color: theme.accent, fontSize: 13, fontWeight: '500' },
   label: {
     color: theme.textDim,
     fontSize: 13,

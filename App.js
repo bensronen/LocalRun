@@ -9,6 +9,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsModal from './src/components/SettingsModal';
 import { buildRoute } from './src/lib/routeBuilder';
 import { saveRun, boostsFromRun } from './src/lib/history';
+import { submitRun } from './src/lib/api';
 import {
   loadSettings,
   saveSettings,
@@ -69,6 +70,7 @@ export default function App() {
         unit: result.unit,
         plan: result.plan,
         city: result.city,
+        community: result.community,
       });
       success();
     } catch (e) {
@@ -84,10 +86,12 @@ export default function App() {
   }, []);
 
   // Save a finished run: write history, feed photos/rating back into the
-  // place-boost model, then return home.
+  // place-boost model, share the anonymized summary with the community
+  // backend (best-effort), then return home.
   const handleSaveRun = useCallback(async (record) => {
     await saveRun(record);
     await boostsFromRun(record);
+    submitRun(record); // fire-and-forget; never blocks saving
     setRunning(false);
     setResult(null);
   }, []);

@@ -47,3 +47,6 @@ yarn-error.*
 pipeline/raw/
 pipeline/out/
 pipeline/final/
+
+# community server local data
+server/data/

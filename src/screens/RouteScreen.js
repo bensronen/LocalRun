@@ -8,7 +8,8 @@ import { CATEGORY_META } from '../data/categories';
 export default function RouteScreen({ result, regenerating, onBack, onRegenerate, onStartRun }) {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const { route, highlights, shape, start, unit, distanceMeters, targetMeters, rationale } = result;
+  const { route, highlights, shape, start, unit, distanceMeters, targetMeters, rationale, community } =
+    result;
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -133,6 +134,12 @@ export default function RouteScreen({ result, regenerating, onBack, onRegenerate
                   </Text>
                 </View>
                 <Text style={styles.itemBlurb}>{h.blurb}</Text>
+                {community?.places?.[h.id]?.photos > 0 && (
+                  <Text style={styles.communityTag}>
+                    📷 Photographed by {community.places[h.id].photos}{' '}
+                    {community.places[h.id].photos === 1 ? 'runner' : 'runners'}
+                  </Text>
+                )}
                 {h.see && <DetailLine icon="👀" text={h.see} />}
                 {h.do && <DetailLine icon="✨" text={h.do} />}
                 {h.tip && <DetailLine icon="💡" text={h.tip} dim />}
@@ -278,6 +285,7 @@ const getStyles = themedStyles((theme) => ({
   itemName: { color: theme.text, fontWeight: '700', fontSize: 15, flex: 1 },
   itemTag: { fontSize: 11, fontWeight: '700', marginLeft: 6 },
   itemBlurb: { color: theme.textDim, fontSize: 13, lineHeight: 19, marginTop: 3 },
+  communityTag: { color: theme.accent, fontSize: 12, fontWeight: '600', marginTop: 5 },
   detailRow: { flexDirection: 'row', gap: 7, marginTop: 6 },
   detailIcon: { fontSize: 12, marginTop: 1 },
   detailText: { color: theme.text, fontSize: 13, lineHeight: 18, flex: 1 },

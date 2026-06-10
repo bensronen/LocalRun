@@ -70,6 +70,22 @@ Settings).
   threads highlights that lie along the corridor toward it, and tops up with a
   measured mid-route detour.
 
+## Community backend (optional)
+
+`server/index.mjs` is a zero-dependency Node server that turns everyone's saved
+runs into shared knowledge: places runners photograph and love get a community
+boost in the route builder, the plan screen shows a city's pulse ("312 runs ·
+most shot: Brooklyn Bridge Park"), and route highlights show how many runners
+photographed them.
+
+- **Run it:** `npm run server` (port 8787; `PORT`/`DATA_FILE` env to override).
+  Deployable as-is to any Node 18+ host — no build step, no database to set up.
+- **Point the app at it:** set `EXPO_PUBLIC_API_URL` in `.env` (use your LAN IP
+  when testing in Expo Go), then `npx expo start -c`.
+- **Privacy:** clients send only place ids and run totals — no names, no
+  coordinates, no photo pixels. Without the env var the app is fully
+  self-contained and learns from your own runs only.
+
 ## Theme
 
 iOS-native look: system-style neutral surfaces with a dark evergreen accent, and

@@ -70,4 +70,27 @@ for (const round of ['clean', 'poisoned']) {
     }
   }
 }
+// Explore round: after "completing" a run, ask for something new — the seen
+// highlights should mostly be avoided (when the city has alternatives).
+console.log('\n=== explore: new vs revisit ===');
+poison = null;
+for (const city of CITIES) {
+  try {
+    const first = await buildRoute(city.defaultStart, { distanceKm: 5, shape: 'loop', vibe: {} }, city);
+    const seen = first.highlights.map((h) => h.id);
+    const fresh = await buildRoute(
+      city.defaultStart,
+      { distanceKm: 5, shape: 'loop', vibe: {}, seen, explore: 'new' },
+      city
+    );
+    const overlap = fresh.highlights.filter((h) => seen.includes(h.id)).length;
+    console.log(
+      `${city.id.padEnd(8)} seen ${seen.length} -> new route overlaps ${overlap}/${fresh.highlights.length}`
+    );
+  } catch (e) {
+    failures.push(`[explore] ${city.id}: ${e.message}`);
+    console.log(`${city.id.padEnd(8)} FAIL: ${e.message}`);
+  }
+}
+
 console.log(failures.length ? `\n${failures.length} FAILURES` : '\nALL PASS');

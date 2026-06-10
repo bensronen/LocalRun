@@ -44,20 +44,30 @@ function valueOf(place, vibe, jitter = 0) {
   return base * w * noise;
 }
 
-// boosts: { placeId: count } learned from the runner's photos and ratings —
-// capped so a favorite spot tilts routes toward it without taking them over.
-function annotate(start, places, city, boosts) {
-  return places.map((p) => ({
-    ...p,
-    // distance to the NEAREST point you'd reach the feature at (a corridor that runs
-    // past the start is "close" even if its midpoint is far)
-    _d: p.corridor && p.corridor.length
-      ? Math.min(...p.corridor.map((c) => haversine(start, c)))
-      : haversine(start, ll(p)),
-    _b: bearing(start, ll(p)),
-    _zone: p.zone || city.primaryZone,
-    _boost: boosts && boosts[p.id] ? 1 + Math.min(boosts[p.id], 5) * 0.12 : 1,
-  }));
+// boosts: { placeId: weight } learned from photos and ratings (yours and the
+// community's) — capped so favorites tilt routes without taking them over.
+// seen/explore: places this runner has already passed on completed runs;
+// 'new' steers away from them, 'revisit' leans back into them.
+function annotate(start, places, city, { boosts, seen, explore } = {}) {
+  const seenSet = new Set(seen || []);
+  return places.map((p) => {
+    let b = boosts && boosts[p.id] ? 1 + Math.min(boosts[p.id], 5) * 0.12 : 1;
+    // 0.3 is deliberately heavy: marquee corridors score so high that anything
+    // gentler leaves repeat runs identical (still beats nothing if alternatives run out)
+    if (explore === 'new' && seenSet.has(p.id)) b *= 0.3;
+    else if (explore === 'revisit' && seenSet.has(p.id)) b *= 1.45;
+    return {
+      ...p,
+      // distance to the NEAREST point you'd reach the feature at (a corridor that runs
+      // past the start is "close" even if its midpoint is far)
+      _d: p.corridor && p.corridor.length
+        ? Math.min(...p.corridor.map((c) => haversine(start, c)))
+        : haversine(start, ll(p)),
+      _b: bearing(start, ll(p)),
+      _zone: p.zone || city.primaryZone,
+      _boost: b,
+    };
+  });
 }
 
 // A start's zone is the zone of the nearest curated place — city-agnostic, no hand
@@ -581,11 +591,11 @@ async function addOnewayDetour(start, waypoints, target, profile) {
 // until within 5% of target.
 export async function buildRoute(
   start,
-  { distanceKm, shape, vibe, profile = 'walking', jitter = 0, boosts },
+  { distanceKm, shape, vibe, profile = 'walking', jitter = 0, boosts, seen, explore },
   city
 ) {
   const targetMeters = distanceKm * 1000;
-  const annotated = annotate(start, city.places, city, boosts);
+  const annotated = annotate(start, city.places, city, { boosts, seen, explore });
   const startZone = zoneForStart(start, annotated, city);
 
   let waypoints;
