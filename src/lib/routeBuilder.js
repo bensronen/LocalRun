@@ -302,6 +302,8 @@ function beautyAt(beauty, p) {
 
 // Higher is better: time spent near scenery + general "beauty" of the ground covered
 // + variety of features passed, minus "dead" stretches far from anything notable.
+// The en-route experience is the product, so beauty-of-ground and dead stretches
+// weigh heavily — we are explicitly NOT optimizing for the fastest way between stops.
 function sceneryScore(routeCoords, annotated, beauty) {
   const samples = sampleAlong(toLL(routeCoords), 120);
   if (!samples.length) return 0;
@@ -319,9 +321,9 @@ function sceneryScore(routeCoords, annotated, beauty) {
   const n = samples.length;
   return (
     prox / n +
-    (beautySum / n) * 1.0 +
+    (beautySum / n) * 1.4 +
     Math.min(seen.size, 10) * 0.05 -
-    (dead / n) * 0.8
+    (dead / n) * 1.1
   );
 }
 
@@ -457,6 +459,68 @@ function coordSequence(start, waypoints, shape) {
   return capCoords(coords);
 }
 
+// Bend the legs BETWEEN stops toward scenery: try threading low-detour scenic
+// features into each long gap, keeping an insertion only when the measured
+// route actually sees more (sceneryScore) without ballooning past target.
+// This is what stops legs from being plain shortest-path streets.
+async function scenicize(start, waypoints, shape, route, annotated, beauty, profile, target) {
+  let curWps = waypoints;
+  let curRoute = route;
+  const evalRoute = (r) => {
+    const ov = selfOverlap(r.coordinates);
+    return { ov, s: sceneryScore(r.coordinates, annotated, beauty) - 0.9 * ov };
+  };
+  let cur = evalRoute(curRoute);
+  const cap = target * 1.12; // the fitting passes that follow reclaim any overshoot
+
+  for (let round = 0; round < 2; round++) {
+    const used = new Set(curWps.map((w) => w.id));
+    // leg i runs reps[i] -> reps[i+1]; inserting at waypoint index i lands in that gap
+    const reps = [ll(start), ...curWps.map((w) => ll(w)), ...(shape === 'loop' ? [ll(start)] : [])];
+    const cands = [];
+    for (let i = 0; i + 1 < reps.length; i++) {
+      const A = reps[i];
+      const B = reps[i + 1];
+      const legLen = haversine(A, B);
+      if (legLen < 500) continue;
+      const budget = Math.min(900, legLen * 0.45);
+      for (const p of annotated) {
+        if (used.has(p.id) || p.corridor) continue;
+        const pt = ll(p);
+        const detour = haversine(A, pt) + haversine(pt, B) - legLen;
+        if (detour <= 30 || detour > budget) continue;
+        const gain = (p.score || 3) * (p._boost || 1) + beautyAt(beauty, pt) * 4;
+        cands.push({ p, idx: i, rank: gain / (1 + detour / 300) });
+      }
+    }
+    cands.sort((a, b) => b.rank - a.rank);
+    let improved = false;
+    for (const c of cands.slice(0, 4)) {
+      const trial = [...curWps.slice(0, c.idx), c.p, ...curWps.slice(c.idx)];
+      let r;
+      try {
+        r = await routeFor(start, trial, shape, profile);
+      } catch {
+        continue;
+      }
+      if (r.distanceMeters > cap) continue;
+      const e = evalRoute(r);
+      // a via that makes the route retrace itself (e.g. a stop sitting right on
+      // the way home) defeats the whole point — scenery never buys doubling back
+      if (e.ov > cur.ov + 0.08) continue;
+      if (e.s > cur.s + 0.015) {
+        curWps = trial;
+        curRoute = r;
+        cur = e;
+        improved = true;
+        break;
+      }
+    }
+    if (!improved) break;
+  }
+  return { waypoints: curWps, route: curRoute };
+}
+
 const TOLERANCE = 0.05; // hit the requested distance within 5%
 
 function routeFor(start, waypoints, shape, profile) {
@@ -467,13 +531,25 @@ function orderWaypoints(ws, shape) {
   return [...ws].sort((a, b) => (shape === 'loop' ? a._b - b._b : a._d - b._d));
 }
 
-// Precise top-up: append a measured out-and-back extension along the route's general
-// direction, binary-searching its length until the real distance lands within tol.
-// The spur carries no marker — it just extends the line to hit the requested distance.
-async function addSpur(start, waypoints, shape, target, profile) {
+// Precise top-up: append a measured extension, binary-searching its length until
+// the real distance lands within tol. The spur carries no marker — but it aims
+// at the prettiest ground the beauty grid knows about, not just "outward".
+async function addSpur(start, waypoints, shape, target, profile, beauty) {
   const cLat = waypoints.reduce((s, w) => s + w.lat, 0) / waypoints.length;
   const cLng = waypoints.reduce((s, w) => s + w.lng, 0) / waypoints.length;
-  const dir = bearing(start, { lat: cLat, lng: cLng });
+  const baseDir = bearing(start, { lat: cLat, lng: cLng });
+  let dir = baseDir;
+  if (beauty) {
+    let best = -1;
+    for (const dd of [-50, -25, 0, 25, 50]) {
+      const probe = destinationPoint(start, baseDir + dd, target * 0.25);
+      const bv = beautyAt(beauty, probe);
+      if (bv > best) {
+        best = bv;
+        dir = baseDir + dd;
+      }
+    }
+  }
   let lo = 50;
   let hi = target * 0.6;
   let best = null;
@@ -661,8 +737,10 @@ export async function buildRoute(
         sets.map(async (set) => {
           try {
             const r = await routeFor(start, set, shape, profile);
+            // overlap penalty outweighs scenery: a pretty out-and-back is still
+            // an out-and-back, and loops are supposed to circle
             const sc =
-              sceneryScore(r.coordinates, annotated, city.beauty) - 0.9 * selfOverlap(r.coordinates);
+              sceneryScore(r.coordinates, annotated, city.beauty) - 1.5 * selfOverlap(r.coordinates);
             return { set, r, sc };
           } catch {
             return null;
@@ -701,6 +779,13 @@ export async function buildRoute(
     }
     route = await routeFor(start, waypoints, shape, profile);
   }
+
+  // Make the legs between stops scenic before fitting the distance.
+  const scenic = await scenicize(
+    start, waypoints, shape, route, annotated, city.beauty, profile, targetMeters
+  );
+  waypoints = scenic.waypoints;
+  route = scenic.route;
 
   const lo = targetMeters * (1 - TOLERANCE);
   const hi = targetMeters * (1 + TOLERANCE);
@@ -773,10 +858,11 @@ export async function buildRoute(
   guard = 0;
   while (route.distanceMeters < lo && pool.length && waypoints.length < MAX_WAYPOINTS + 3 && guard++ < 6) {
     const gap = targetMeters - route.distanceMeters;
-    pool.sort(
-      (a, b) =>
-        Math.abs(2 * a._d * STREET_FACTOR - gap) - Math.abs(2 * b._d * STREET_FACTOR - gap)
-    );
+    // prefer fillers that are also worth seeing: each appeal point forgives
+    // ~150m of distance mismatch, so a great spot beats a geometrically perfect dud
+    const fitErr = (p) =>
+      Math.abs(2 * p._d * STREET_FACTOR - gap) - valueOf(p, vibe, 0) * 150;
+    pool.sort((a, b) => fitErr(a) - fitErr(b));
     const cand = pool.shift();
     const trial = orderWaypoints([...waypoints, cand], shape);
     let r;
@@ -785,7 +871,12 @@ export async function buildRoute(
     } catch {
       continue; // candidate unroutable — try the next one
     }
-    if (r.distanceMeters <= hi && r.distanceMeters > route.distanceMeters) {
+    if (
+      r.distanceMeters <= hi &&
+      r.distanceMeters > route.distanceMeters &&
+      // never grow by doubling back over ground already covered
+      selfOverlap(r.coordinates) <= selfOverlap(route.coordinates) + 0.08
+    ) {
       waypoints = trial;
       route = r;
       used.add(cand.id);
@@ -797,7 +888,7 @@ export async function buildRoute(
   if (route.distanceMeters < lo) {
     const r =
       shape === 'loop'
-        ? await addSpur(start, waypoints, shape, targetMeters, profile)
+        ? await addSpur(start, waypoints, shape, targetMeters, profile, city.beauty)
         : await addOnewayDetour(start, waypoints, targetMeters, profile);
     if (r && Math.abs(r.distanceMeters - targetMeters) < Math.abs(route.distanceMeters - targetMeters)) {
       route = r;
