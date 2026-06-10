@@ -83,6 +83,36 @@ export async function getManeuvers(routeCoords, profile = 'walking') {
   }
 }
 
+// Autocomplete suggestions while typing: free text -> up to `limit` candidate
+// places [{lat, lng, name}], biased to a city bbox. Returns [] on any failure —
+// suggestions are best-effort and must never alert.
+export async function geocodeSuggest(query, proximity, bbox, limit = 5) {
+  if (!hasToken() || !query.trim()) return [];
+  const bboxStr = Array.isArray(bbox) ? bbox.join(',') : bbox || DEFAULT_BBOX;
+  const params = new URLSearchParams({
+    access_token: TOKEN,
+    autocomplete: 'true',
+    limit: String(limit),
+    bbox: bboxStr,
+  });
+  if (proximity) params.set('proximity', `${proximity.lng},${proximity.lat}`);
+  const url =
+    `${BASE}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?` +
+    params.toString();
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.features || []).map((f) => ({
+      lat: f.center[1],
+      lng: f.center[0],
+      name: f.place_name,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // Free-text address -> {lat, lng, name}, biased to a city bbox ([w,s,e,n] array or
 // string). Returns null if nothing found.
 export async function geocode(query, proximity, bbox) {

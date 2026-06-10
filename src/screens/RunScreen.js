@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import { theme, fmt } from '../theme';
+import { useTheme, themedStyles, fmt } from '../theme';
 import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
@@ -12,6 +12,8 @@ import { dist, formatClock, formatPace, turnsFromGeometry, speak, stopSpeaking, 
 
 export default function RunScreen({ result, settings, onExit }) {
   useKeepAwake();
+  const theme = useTheme();
+  const styles = getStyles(theme);
   const { route, highlights, start, unit, city } = result;
   const profile = result.plan?.profile || 'walking';
   const unitM = unit === 'mi' ? 1609.34 : 1000;
@@ -211,6 +213,7 @@ export default function RunScreen({ result, settings, onExit }) {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_DEFAULT}
+        userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
         showsUserLocation
         showsMyLocationButton={false}
         initialRegion={{
@@ -300,6 +303,7 @@ export default function RunScreen({ result, settings, onExit }) {
 }
 
 function Stat({ value, label, big }) {
+  const styles = getStyles(useTheme());
   return (
     <View style={styles.stat}>
       <Text style={[styles.statValue, big && styles.statValueBig]}>{value}</Text>
@@ -338,7 +342,7 @@ function nearestCorridorPt(cur, p) {
   return best;
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((theme) => ({
   screen: { flex: 1, backgroundColor: theme.bg },
   pin: {
     width: 26,
@@ -422,4 +426,4 @@ const styles = StyleSheet.create({
   },
   stopText: { color: theme.onAccent, fontWeight: '600', fontSize: 15 },
   doneTitle: { color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
-});
+}));

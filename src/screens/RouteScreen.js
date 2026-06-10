@@ -1,11 +1,13 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
-import { theme, fmt, shadow } from '../theme';
+import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 
 export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
   const { route, highlights, shape, start, unit, distanceMeters, targetMeters, rationale } = result;
   const mapRef = useRef(null);
 
@@ -30,7 +32,12 @@ export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }
   return (
     <View style={styles.screen}>
       <View style={styles.mapWrap}>
-        <MapView ref={mapRef} style={StyleSheet.absoluteFill} provider={PROVIDER_DEFAULT}>
+        <MapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          provider={PROVIDER_DEFAULT}
+          userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
+        >
           <Polyline coordinates={route.coordinates} strokeColor={theme.accent} strokeWidth={5} />
           <Marker coordinate={{ latitude: start.lat, longitude: start.lng }} title="Start">
             <View style={[styles.pin, { backgroundColor: theme.good }]}>
@@ -152,6 +159,7 @@ export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }
 }
 
 function Stat({ value, label }) {
+  const styles = getStyles(useTheme());
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{value}</Text>
@@ -161,6 +169,7 @@ function Stat({ value, label }) {
 }
 
 function DetailLine({ icon, text, dim }) {
+  const styles = getStyles(useTheme());
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailIcon}>{icon}</Text>
@@ -169,7 +178,7 @@ function DetailLine({ icon, text, dim }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((theme) => ({
   screen: { flex: 1 },
   mapWrap: { height: '42%' },
   backWrap: { position: 'absolute', top: 50, left: 14 },
@@ -283,4 +292,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
-});
+}));

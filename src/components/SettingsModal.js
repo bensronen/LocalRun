@@ -1,10 +1,12 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
-import { theme, shadow } from '../theme';
+import { Modal, View, Text, TouchableOpacity, Switch } from 'react-native';
+import { useTheme, themedStyles, shadow } from '../theme';
 import { TALK_LEVELS } from '../lib/settings';
 import Glass from './Glass';
 
 export default function SettingsModal({ visible, settings, onChange, onClose }) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -45,6 +47,19 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
             />
           </View>
 
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Dark mode</Text>
+              <Text style={styles.sub}>Pure black, easier on the eyes at night.</Text>
+            </View>
+            <Switch
+              value={!!settings.dark}
+              onValueChange={(v) => onChange({ ...settings, dark: v })}
+              trackColor={{ true: theme.accent, false: theme.border }}
+              thumbColor="#fff"
+            />
+          </View>
+
           <TouchableOpacity style={styles.done} onPress={onClose}>
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
@@ -54,7 +69,7 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((theme) => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'flex-end' },
   sheet: {
     borderTopLeftRadius: 22,
@@ -97,4 +112,4 @@ const styles = StyleSheet.create({
     ...shadow,
   },
   doneText: { color: theme.onAccent, fontSize: 16, fontWeight: '600' },
-});
+}));

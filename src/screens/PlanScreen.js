@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,14 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Keyboard,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { theme, fmt, shadow } from '../theme';
+import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
-import { geocode, hasToken } from '../lib/mapbox';
+import { geocode, geocodeSuggest, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
 import { CITIES, cityForPoint } from '../data/cities';
 
@@ -27,10 +28,13 @@ const VIBES = [
 ];
 
 export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
   const [city, setCity] = useState(CITIES[0]);
   const [cityOpen, setCityOpen] = useState(false);
   const [start, setStart] = useState(CITIES[0].defaultStart);
   const [address, setAddress] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
   const [distanceKm, setDistanceKm] = useState(5);
   const [unit, setUnit] = useState('km');
   const [shape, setShape] = useState('loop');
@@ -38,12 +42,45 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
 
+  const suggestTimer = useRef(null);
+  const suggestSeq = useRef(0);
+  useEffect(() => () => clearTimeout(suggestTimer.current), []);
+
   const distMeters = distanceKm * 1000;
+
+  function clearAddress() {
+    setAddress('');
+    setSuggestions([]);
+  }
 
   function switchCity(c) {
     setCity(c);
     setStart(c.defaultStart);
-    setAddress('');
+    clearAddress();
+  }
+
+  // Debounced autocomplete: suggest as you type, newest request wins.
+  function onChangeAddress(text) {
+    setAddress(text);
+    clearTimeout(suggestTimer.current);
+    const q = text.trim();
+    if (q.length < 3 || !hasToken()) {
+      setSuggestions([]);
+      return;
+    }
+    suggestTimer.current = setTimeout(async () => {
+      const seq = ++suggestSeq.current;
+      const hits = await geocodeSuggest(q, start, city.bbox);
+      if (seq === suggestSeq.current) setSuggestions(hits);
+    }, 300);
+  }
+
+  function pickSuggestion(s) {
+    suggestSeq.current += 1; // invalidate any in-flight request
+    setStart(s);
+    setAddress(s.name);
+    setSuggestions([]);
+    Keyboard.dismiss();
   }
 
   function toggleVibe(key) {
@@ -63,7 +100,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       const detected = cityForPoint(pt);
       setCity(detected);
       setStart({ ...pt, name: 'My location' });
-      setAddress('');
+      clearAddress();
     } catch (e) {
       Alert.alert('Could not locate', e.message);
     } finally {
@@ -73,6 +110,10 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
 
   async function searchAddress() {
     if (!address.trim()) return;
+    if (suggestions.length) {
+      pickSuggestion(suggestions[0]);
+      return;
+    }
     if (!hasToken()) {
       Alert.alert('Add a Mapbox token', 'Address search needs EXPO_PUBLIC_MAPBOX_TOKEN in .env.');
       return;
@@ -85,6 +126,8 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
         return;
       }
       setStart(hit);
+      setAddress(hit.name);
+      setSuggestions([]);
     } catch (e) {
       Alert.alert('Search failed', e.message);
     } finally {
@@ -118,7 +161,11 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.title}>LocalRun</Text>
@@ -168,7 +215,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
           placeholder={`Hotel or address in ${city.name}…`}
           placeholderTextColor={theme.textDim}
           value={address}
-          onChangeText={setAddress}
+          onChangeText={onChangeAddress}
           onSubmitEditing={searchAddress}
           returnKeyType="search"
         />
@@ -176,6 +223,22 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
           <Text style={styles.smallBtnText}>Find</Text>
         </TouchableOpacity>
       </View>
+
+      {suggestions.length > 0 && (
+        <View style={styles.suggestBox}>
+          {suggestions.map((s, i) => (
+            <TouchableOpacity
+              key={`${s.lat},${s.lng}`}
+              style={[styles.suggestItem, i > 0 && styles.suggestDivider]}
+              onPress={() => pickSuggestion(s)}
+            >
+              <Text style={styles.suggestText} numberOfLines={1}>
+                {s.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       <View style={styles.presetRow}>
         <TouchableOpacity style={styles.preset} onPress={useMyLocation}>
@@ -187,7 +250,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
             style={styles.preset}
             onPress={() => {
               setStart(p);
-              setAddress('');
+              clearAddress();
             }}
           >
             <Text style={styles.presetText}>{p.label}</Text>
@@ -199,6 +262,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
         <MapView
           style={StyleSheet.absoluteFill}
           provider={PROVIDER_DEFAULT}
+          userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
           region={{
             latitude: start.lat,
             longitude: start.lng,
@@ -208,7 +272,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
           onPress={(e) => {
             const { latitude, longitude } = e.nativeEvent.coordinate;
             setStart({ lat: latitude, lng: longitude, name: 'Dropped pin' });
-            setAddress('');
+            clearAddress();
           }}
         >
           <Marker
@@ -309,7 +373,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((theme) => ({
   screen: { flex: 1, paddingHorizontal: 18 },
   headerRow: {
     flexDirection: 'row',
@@ -394,6 +458,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   smallBtnText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
+  suggestBox: {
+    backgroundColor: theme.card,
+    borderRadius: 12,
+    marginTop: 6,
+    overflow: 'hidden',
+    ...shadow,
+  },
+  suggestItem: { paddingHorizontal: 14, paddingVertical: 12 },
+  suggestDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border },
+  suggestText: { color: theme.text, fontSize: 14 },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   preset: {
     backgroundColor: theme.card,
@@ -455,4 +529,4 @@ const styles = StyleSheet.create({
   },
   ctaText: { color: theme.onAccent, fontSize: 17, fontWeight: '600' },
   warn: { color: theme.textDim, fontSize: 12, marginTop: 14, lineHeight: 18 },
-});
+}));

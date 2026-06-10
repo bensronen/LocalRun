@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'localrun.settings.v1';
 
-export const DEFAULT_SETTINGS = { talk: 'normal', voice: true };
+export const DEFAULT_SETTINGS = { talk: 'normal', voice: true, dark: false };
 
 // Talk levels control how often the app narrates the area you're running through.
 // Turn directions and arrival callouts always fire (unless voice is off).

@@ -8,7 +8,7 @@ import RunScreen from './src/screens/RunScreen';
 import SettingsModal from './src/components/SettingsModal';
 import { buildRoute } from './src/lib/routeBuilder';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './src/lib/settings';
-import { theme } from './src/theme';
+import { themes, ThemeProvider } from './src/theme';
 
 export default function App() {
   const [result, setResult] = useState(null);
@@ -60,21 +60,25 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.root}>
-        <StatusBar style="dark" />
-        {screen}
-        <SettingsModal
-          visible={settingsOpen}
-          settings={settings}
-          onChange={updateSettings}
-          onClose={() => setSettingsOpen(false)}
-        />
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <ThemeProvider dark={!!settings.dark}>
+      <SafeAreaProvider>
+        <SafeAreaView
+          style={[styles.root, { backgroundColor: settings.dark ? themes.dark.bg : themes.light.bg }]}
+        >
+          <StatusBar style={settings.dark ? 'light' : 'dark'} />
+          {screen}
+          <SettingsModal
+            visible={settingsOpen}
+            settings={settings}
+            onChange={updateSettings}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.bg },
+  root: { flex: 1 },
 });
