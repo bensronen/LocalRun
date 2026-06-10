@@ -11,13 +11,24 @@ export const theme = {
   accent: '#2c5e40',
   accentDeep: '#1e4a30',
   good: '#3c7a52',
-  border: 'rgba(29, 53, 39, 0.22)',
+  border: 'rgba(29, 53, 39, 0.12)',
+  tint: 'rgba(44, 94, 64, 0.12)', // accent wash for tinted buttons & segmented tracks
   danger: '#b9543f',
   // dark translucent surfaces floating over the map
   overlay: 'rgba(20, 38, 27, 0.88)',
   onOverlay: '#f3eee0',
   accentSoft: '#a9d4b8', // accent legible on `overlay`
   onAccent: '#f7f1e3', // text on accent/good buttons
+};
+
+// Soft elevation for cards and buttons — surfaces float on the gradient
+// instead of being outlined.
+export const shadow = {
+  shadowColor: '#1d3527',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  elevation: 2,
 };
 
 export const fmt = {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
-import { theme } from '../theme';
+import { theme, shadow } from '../theme';
 import { TALK_LEVELS } from '../lib/settings';
 
 export default function SettingsModal({ visible, settings, onChange, onClose }) {
@@ -54,15 +54,13 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(20, 38, 27, 0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: theme.card,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     padding: 22,
     paddingBottom: 36,
-    borderTopWidth: 1,
-    borderColor: theme.border,
   },
   handle: {
     width: 44,
@@ -72,8 +70,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 14,
   },
-  title: { color: theme.text, fontSize: 22, fontWeight: '800', marginBottom: 18 },
-  label: { color: theme.text, fontSize: 16, fontWeight: '700' },
+  title: { color: theme.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.3, marginBottom: 18 },
+  label: { color: theme.text, fontSize: 16, fontWeight: '600' },
   sub: { color: theme.textDim, fontSize: 13, marginTop: 3, lineHeight: 18 },
   row: { flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 8 },
   opt: {
@@ -83,12 +81,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 6,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
   },
-  optActive: { borderColor: theme.accent, backgroundColor: theme.bg },
-  optLabel: { color: theme.text, fontWeight: '700', fontSize: 14 },
-  optLabelActive: { color: theme.accent },
+  optActive: { backgroundColor: theme.tint },
+  optLabel: { color: theme.text, fontWeight: '600', fontSize: 14 },
+  optLabelActive: { color: theme.accent, fontWeight: '700' },
   optBlurb: { color: theme.textDim, fontSize: 10, marginTop: 3, textAlign: 'center' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   done: {
@@ -97,6 +93,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 26,
+    ...shadow,
   },
-  doneText: { color: theme.onAccent, fontSize: 16, fontWeight: '800' },
+  doneText: { color: theme.onAccent, fontSize: 16, fontWeight: '600' },
 });

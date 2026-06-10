@@ -13,16 +13,16 @@ import {
 import Slider from '@react-native-community/slider';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { theme, fmt } from '../theme';
+import { theme, fmt, shadow } from '../theme';
 import { geocode, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
 import { CITIES, cityForPoint } from '../data/cities';
 
 const VIBES = [
-  { key: 'waterfront', label: '🌊 Waterfront' },
-  { key: 'parks', label: '🌳 Parks' },
-  { key: 'landmarks', label: '📍 Landmarks' },
-  { key: 'neighborhoods', label: '🏙️ Neighborhoods' },
+  { key: 'waterfront', label: 'Waterfront' },
+  { key: 'parks', label: 'Parks' },
+  { key: 'landmarks', label: 'Landmarks' },
+  { key: 'neighborhoods', label: 'Neighborhoods' },
 ];
 
 export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
@@ -160,7 +160,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       </Modal>
 
       {/* Start */}
-      <Text style={styles.label}>Where are you staying?</Text>
+      <Text style={styles.label}>Start from</Text>
       <View style={styles.row}>
         <TextInput
           style={styles.input}
@@ -178,7 +178,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
 
       <View style={styles.presetRow}>
         <TouchableOpacity style={styles.preset} onPress={useMyLocation}>
-          <Text style={styles.presetText}>{locating ? '…' : '📡 My location'}</Text>
+          <Text style={styles.presetText}>{locating ? 'Locating…' : 'My location'}</Text>
         </TouchableOpacity>
         {city.presets.map((p) => (
           <TouchableOpacity
@@ -220,16 +220,20 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
           />
         </MapView>
         <View style={styles.mapHint}>
-          <Text style={styles.mapHintText}>📍 {start.name} · tap to move</Text>
+          <Text style={styles.mapHintText}>{start.name} · tap to move</Text>
         </View>
       </View>
 
       {/* Distance */}
       <View style={styles.distHeader}>
-        <Text style={styles.label}>How far?</Text>
+        <Text style={styles.label}>Distance</Text>
         <View style={styles.unitToggle}>
           {['km', 'mi'].map((u) => (
-            <TouchableOpacity key={u} onPress={() => setUnit(u)}>
+            <TouchableOpacity
+              key={u}
+              style={[styles.unitBtn, unit === u && styles.unitBtnActive]}
+              onPress={() => setUnit(u)}
+            >
               <Text style={[styles.unit, unit === u && styles.unitActive]}>{u}</Text>
             </TouchableOpacity>
           ))}
@@ -254,8 +258,8 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       <Text style={styles.label}>Route shape</Text>
       <View style={styles.segmented}>
         {[
-          { key: 'loop', label: '🔁 Loop back', hint: 'Return to start' },
-          { key: 'oneway', label: '➡️ One-way', hint: 'Bike/transit back' },
+          { key: 'loop', label: 'Loop back', hint: 'Return to start' },
+          { key: 'oneway', label: 'One-way', hint: 'Bike/transit back' },
         ].map((s) => (
           <TouchableOpacity
             key={s.key}
@@ -271,7 +275,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       </View>
 
       {/* Vibe */}
-      <Text style={styles.label}>What do you want to see? (optional)</Text>
+      <Text style={styles.label}>Sights (optional)</Text>
       <View style={styles.vibeRow}>
         {VIBES.map((v) => (
           <TouchableOpacity
@@ -290,7 +294,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
         {busy ? (
           <ActivityIndicator color={theme.onAccent} />
         ) : (
-          <Text style={styles.ctaText}>Build my run →</Text>
+          <Text style={styles.ctaText}>Build my run</Text>
         )}
       </TouchableOpacity>
 
@@ -312,36 +316,34 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginTop: 8,
   },
-  title: { color: theme.text, fontSize: 34, fontWeight: '800' },
-  subtitle: { color: theme.textDim, fontSize: 14, marginBottom: 14 },
+  title: { color: theme.text, fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
+  subtitle: { color: theme.textDim, fontSize: 15, marginTop: 2, marginBottom: 16 },
   gear: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+    ...shadow,
   },
-  gearIcon: { color: theme.textDim, fontSize: 20 },
+  gearIcon: { color: theme.accent, fontSize: 19 },
   cityBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: theme.card,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    ...shadow,
   },
-  cityBtnText: { color: theme.text, fontWeight: '700', fontSize: 16 },
-  cityBtnChevron: { color: theme.accent, fontSize: 14, fontWeight: '800' },
+  cityBtnText: { color: theme.text, fontWeight: '600', fontSize: 16 },
+  cityBtnChevron: { color: theme.textDim, fontSize: 13, fontWeight: '700' },
   cityBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(20, 38, 27, 0.35)',
+    backgroundColor: 'rgba(20, 38, 27, 0.3)',
     justifyContent: 'flex-start',
     paddingTop: 130,
     paddingHorizontal: 18,
@@ -349,10 +351,12 @@ const styles = StyleSheet.create({
   cityMenu: {
     backgroundColor: theme.card,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
     maxHeight: 420,
     overflow: 'hidden',
+    ...shadow,
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 8,
   },
   cityItem: {
     flexDirection: 'row',
@@ -363,11 +367,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.border,
   },
-  cityItemActive: { backgroundColor: theme.cardAlt },
-  cityItemText: { color: theme.text, fontWeight: '600', fontSize: 15 },
-  cityItemTextActive: { color: theme.accent, fontWeight: '800' },
-  cityCheck: { color: theme.accent, fontWeight: '800', fontSize: 15 },
-  label: { color: theme.text, fontSize: 16, fontWeight: '700', marginTop: 18, marginBottom: 8 },
+  cityItemActive: { backgroundColor: theme.tint },
+  cityItemText: { color: theme.text, fontWeight: '500', fontSize: 16 },
+  cityItemTextActive: { color: theme.accent, fontWeight: '700' },
+  cityCheck: { color: theme.accent, fontWeight: '700', fontSize: 15 },
+  label: {
+    color: theme.textDim,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 24,
+    marginBottom: 8,
+  },
   row: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1,
@@ -376,36 +388,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
+    fontSize: 15,
+    ...shadow,
   },
   smallBtn: {
-    backgroundColor: theme.cardAlt,
+    backgroundColor: theme.tint,
     borderRadius: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
   },
-  smallBtnText: { color: theme.accent, fontWeight: '700' },
+  smallBtnText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   preset: {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.border,
+    ...shadow,
   },
-  presetText: { color: theme.textDim, fontWeight: '600', fontSize: 13 },
-  mapWrap: {
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
+  presetText: { color: theme.text, fontWeight: '500', fontSize: 13 },
+  mapWrap: { height: 200, borderRadius: 16, overflow: 'hidden', marginTop: 14 },
   mapHint: {
     position: 'absolute',
     left: 10,
@@ -416,44 +418,45 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   mapHintText: { color: theme.onOverlay, fontSize: 12, fontWeight: '600' },
-  distHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  unitToggle: { flexDirection: 'row', gap: 14, marginBottom: 8 },
-  unit: { color: theme.textDim, fontSize: 14, fontWeight: '700' },
-  unitActive: { color: theme.accent, textDecorationLine: 'underline' },
-  distValue: { color: theme.accent, fontSize: 30, fontWeight: '800' },
-  estimate: { color: theme.textDim, fontSize: 13, marginTop: 4 },
-  segmented: { flexDirection: 'row', gap: 10 },
-  segment: {
-    flex: 1,
-    backgroundColor: theme.card,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
+  distHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  unitToggle: {
+    flexDirection: 'row',
+    backgroundColor: theme.tint,
+    borderRadius: 9,
+    padding: 2,
+    marginTop: 20,
   },
-  segmentActive: { borderColor: theme.accent, backgroundColor: theme.cardAlt },
-  segmentText: { color: theme.text, fontWeight: '700', fontSize: 15 },
-  segmentTextActive: { color: theme.accent },
+  unitBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 7 },
+  unitBtnActive: { backgroundColor: theme.card, ...shadow },
+  unit: { color: theme.textDim, fontSize: 13, fontWeight: '600' },
+  unitActive: { color: theme.text },
+  distValue: { color: theme.text, fontSize: 34, fontWeight: '700', letterSpacing: -0.5, marginTop: 4 },
+  estimate: { color: theme.textDim, fontSize: 13, marginTop: 4 },
+  segmented: { flexDirection: 'row', backgroundColor: theme.tint, borderRadius: 12, padding: 3 },
+  segment: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  segmentActive: { backgroundColor: theme.card, ...shadow },
+  segmentText: { color: theme.textDim, fontWeight: '600', fontSize: 15 },
+  segmentTextActive: { color: theme.text },
   segmentHint: { color: theme.textDim, fontSize: 12, marginTop: 2 },
   vibeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: theme.border,
+    ...shadow,
   },
-  chipActive: { borderColor: theme.accent, backgroundColor: theme.cardAlt },
-  chipText: { color: theme.textDim, fontWeight: '600' },
-  chipTextActive: { color: theme.accent },
+  chipActive: { backgroundColor: theme.accent },
+  chipText: { color: theme.text, fontWeight: '500', fontSize: 14 },
+  chipTextActive: { color: theme.onAccent, fontWeight: '600' },
   cta: {
     backgroundColor: theme.accent,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 26,
+    marginTop: 28,
+    ...shadow,
   },
-  ctaText: { color: theme.onAccent, fontSize: 17, fontWeight: '800' },
+  ctaText: { color: theme.onAccent, fontSize: 17, fontWeight: '600' },
   warn: { color: theme.textDim, fontSize: 12, marginTop: 14, lineHeight: 18 },
 });

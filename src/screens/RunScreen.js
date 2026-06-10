@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import { theme, fmt } from '../theme';
+import { theme, fmt, shadow } from '../theme';
 import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
 import { ambientInterval } from '../lib/settings';
@@ -271,7 +271,7 @@ export default function RunScreen({ result, settings, onExit }) {
           </Text>
           <View style={styles.controls}>
             <TouchableOpacity style={styles.secondary} onPress={togglePause}>
-              <Text style={styles.secondaryText}>{paused ? '▶ Resume' : '❚❚ Pause'}</Text>
+              <Text style={styles.secondaryText}>{paused ? 'Resume' : 'Pause'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.stop} onPress={finish}>
               <Text style={styles.stopText}>Finish</Text>
@@ -280,7 +280,7 @@ export default function RunScreen({ result, settings, onExit }) {
         </View>
       ) : (
         <View style={styles.panel}>
-          <Text style={styles.doneTitle}>🏁 Run complete</Text>
+          <Text style={styles.doneTitle}>Run complete</Text>
           <View style={styles.statsRow}>
             <Stat value={formatClock(elapsed)} label="time" />
             <Stat value={fmt.km(distM, unit)} label="distance" />
@@ -383,13 +383,14 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 210,
-    backgroundColor: theme.cardAlt,
+    backgroundColor: theme.card,
     borderRadius: 14,
     padding: 14,
-    borderWidth: 1,
-    borderColor: theme.accent,
+    ...shadow,
+    shadowOpacity: 0.15,
+    elevation: 4,
   },
-  calloutName: { color: theme.accent, fontWeight: '800', fontSize: 15 },
+  calloutName: { color: theme.accent, fontWeight: '700', fontSize: 15 },
   calloutText: { color: theme.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
   panel: {
     position: 'absolute',
@@ -402,8 +403,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 34,
-    borderTopWidth: 1,
-    borderColor: theme.border,
+    ...shadow,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    elevation: 10,
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   stat: { alignItems: 'center', flex: 1 },
@@ -414,14 +417,12 @@ const styles = StyleSheet.create({
   controls: { flexDirection: 'row', gap: 12, marginTop: 16 },
   secondary: {
     flex: 1,
-    backgroundColor: theme.cardAlt,
+    backgroundColor: theme.tint,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
   },
-  secondaryText: { color: theme.text, fontWeight: '700', fontSize: 15 },
+  secondaryText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
   stop: {
     flex: 1,
     backgroundColor: theme.accent,
@@ -429,6 +430,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
   },
-  stopText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
-  doneTitle: { color: theme.text, fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 14 },
+  stopText: { color: theme.onAccent, fontWeight: '600', fontSize: 15 },
+  doneTitle: { color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
 });

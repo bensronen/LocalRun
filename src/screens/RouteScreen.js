@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
-import { theme, fmt } from '../theme';
+import { theme, fmt, shadow } from '../theme';
 import { CATEGORY_META } from '../data/categories';
 
 export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }) {
@@ -133,7 +133,7 @@ export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }
         })}
 
         <TouchableOpacity style={styles.startBtn} onPress={onStartRun}>
-          <Text style={styles.startText}>▶  Start run</Text>
+          <Text style={styles.startText}>Start run</Text>
         </TouchableOpacity>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.secondary} onPress={onBack}>
@@ -206,8 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
+    ...shadow,
   },
   whyTitle: {
     color: theme.accent,
@@ -237,12 +236,11 @@ const styles = StyleSheet.create({
   altText: { color: theme.textDim, fontSize: 13, lineHeight: 19, marginTop: 4 },
   altName: { color: theme.text, fontWeight: '700' },
   endCard: {
-    backgroundColor: theme.cardAlt,
+    backgroundColor: theme.card,
     borderRadius: 14,
     padding: 14,
     marginTop: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
+    ...shadow,
   },
   endTitle: { color: theme.text, fontWeight: '800', fontSize: 15 },
   endTransit: { color: theme.accent, fontSize: 13, marginTop: 6 },
@@ -267,22 +265,21 @@ const styles = StyleSheet.create({
   detailText: { color: theme.text, fontSize: 13, lineHeight: 18, flex: 1 },
   detailDim: { color: theme.textDim },
   startBtn: {
-    backgroundColor: theme.good,
-    borderRadius: 16,
-    paddingVertical: 17,
+    backgroundColor: theme.accent,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 12,
+    ...shadow,
   },
-  startText: { color: theme.onAccent, fontSize: 18, fontWeight: '800' },
+  startText: { color: theme.onAccent, fontSize: 17, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   secondary: {
     flex: 1,
-    backgroundColor: theme.card,
+    backgroundColor: theme.tint,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
   },
-  secondaryText: { color: theme.text, fontWeight: '700' },
+  secondaryText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
 });
