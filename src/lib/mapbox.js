@@ -42,6 +42,47 @@ export async function getRoute(coords, profile = 'walking') {
   };
 }
 
+// Turn-by-turn maneuvers for an already-built route geometry, via Map Matching (it
+// snaps the exact path and returns steps). routeCoords: [{latitude, longitude}].
+// Returns [{lat, lng, instruction, type, modifier, name, distance}] (empty on failure).
+export async function getManeuvers(routeCoords, profile = 'walking') {
+  if (!hasToken() || routeCoords.length < 2) return [];
+  const MAX = 90; // Map Matching allows <=100 coords
+  let coords = routeCoords;
+  if (routeCoords.length > MAX) {
+    const stride = Math.ceil(routeCoords.length / MAX);
+    coords = routeCoords.filter((_, i) => i % stride === 0);
+    if (coords[coords.length - 1] !== routeCoords[routeCoords.length - 1]) {
+      coords.push(routeCoords[routeCoords.length - 1]);
+    }
+  }
+  const path = coords.map((c) => `${c.longitude},${c.latitude}`).join(';');
+  const url =
+    `${BASE}/matching/v5/mapbox/${profile}/${path}` +
+    `?steps=true&geometries=geojson&overview=false&tidy=true&access_token=${TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const m = json.matchings && json.matchings[0];
+    if (!m) return [];
+    const steps = (m.legs || []).flatMap((l) => l.steps || []);
+    return steps
+      .map((s) => ({
+        lat: s.maneuver.location[1],
+        lng: s.maneuver.location[0],
+        instruction: s.maneuver.instruction,
+        type: s.maneuver.type,
+        modifier: s.maneuver.modifier || '',
+        name: s.name || '',
+        distance: s.distance,
+      }))
+      .filter((s) => s.instruction);
+  } catch {
+    return [];
+  }
+}
+
 // Free-text address -> {lat, lng, name}, biased to a city bbox ([w,s,e,n] array or
 // string). Returns null if nothing found.
 export async function geocode(query, proximity, bbox) {

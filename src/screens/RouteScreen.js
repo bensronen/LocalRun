@@ -4,7 +4,7 @@ import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { theme, fmt } from '../theme';
 import { CATEGORY_META } from '../data/categories';
 
-export default function RouteScreen({ result, onBack, onRegenerate }) {
+export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }) {
   const { route, highlights, shape, start, unit, distanceMeters, targetMeters, rationale } = result;
   const mapRef = useRef(null);
 
@@ -132,12 +132,15 @@ export default function RouteScreen({ result, onBack, onRegenerate }) {
           );
         })}
 
+        <TouchableOpacity style={styles.startBtn} onPress={onStartRun}>
+          <Text style={styles.startText}>▶  Start run</Text>
+        </TouchableOpacity>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.secondary} onPress={onBack}>
             <Text style={styles.secondaryText}>Adjust</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primary} onPress={onRegenerate}>
-            <Text style={styles.primaryText}>↻ Another route</Text>
+          <TouchableOpacity style={styles.secondary} onPress={onRegenerate}>
+            <Text style={styles.secondaryText}>↻ Another</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -263,7 +266,15 @@ const styles = StyleSheet.create({
   detailIcon: { fontSize: 12, marginTop: 1 },
   detailText: { color: theme.text, fontSize: 13, lineHeight: 18, flex: 1 },
   detailDim: { color: theme.textDim },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 10 },
+  startBtn: {
+    backgroundColor: theme.good,
+    borderRadius: 16,
+    paddingVertical: 17,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  startText: { color: '#021018', fontSize: 18, fontWeight: '800' },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   secondary: {
     flex: 1,
     backgroundColor: theme.card,

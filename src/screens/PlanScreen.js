@@ -24,7 +24,7 @@ const VIBES = [
   { key: 'neighborhoods', label: '🏙️ Neighborhoods' },
 ];
 
-export default function PlanScreen({ onRouteBuilt }) {
+export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   const [city, setCity] = useState(CITIES[0]);
   const [start, setStart] = useState(CITIES[0].defaultStart);
   const [address, setAddress] = useState('');
@@ -116,8 +116,15 @@ export default function PlanScreen({ onRouteBuilt }) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.title}>Local</Text>
-      <Text style={styles.subtitle}>Run a city like a local.</Text>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.title}>Local</Text>
+          <Text style={styles.subtitle}>Run a city like a local.</Text>
+        </View>
+        <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
+          <Text style={styles.gearIcon}>⚙︎</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* City selector */}
       <ScrollView
@@ -286,8 +293,26 @@ export default function PlanScreen({ onRouteBuilt }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 18 },
-  title: { color: theme.text, fontSize: 34, fontWeight: '800', marginTop: 8 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 8,
+  },
+  title: { color: theme.text, fontSize: 34, fontWeight: '800' },
   subtitle: { color: theme.textDim, fontSize: 14, marginBottom: 14 },
+  gear: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  gearIcon: { color: theme.textDim, fontSize: 20 },
   cityRow: { marginBottom: 4 },
   cityChip: {
     backgroundColor: theme.card,
