@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -7,17 +7,34 @@ import RouteScreen from './src/screens/RouteScreen';
 import RunScreen from './src/screens/RunScreen';
 import SettingsModal from './src/components/SettingsModal';
 import { buildRoute } from './src/lib/routeBuilder';
-import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './src/lib/settings';
+import {
+  loadSettings,
+  saveSettings,
+  loadPlanDraft,
+  savePlanDraft,
+  DEFAULT_SETTINGS,
+} from './src/lib/settings';
+import { success, thump } from './src/lib/haptics';
 import { themes, ThemeProvider } from './src/theme';
 
 export default function App() {
   const [result, setResult] = useState(null);
   const [running, setRunning] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  const draftSaveTimer = useRef(null);
 
   useEffect(() => {
     loadSettings().then(setSettings);
+    loadPlanDraft().then((d) => {
+      setDraft(d);
+      setDraftLoaded(true);
+    });
+    return () => clearTimeout(draftSaveTimer.current);
   }, []);
 
   const updateSettings = useCallback((s) => {
@@ -25,11 +42,23 @@ export default function App() {
     saveSettings(s);
   }, []);
 
-  const handleRouteBuilt = useCallback((res) => setResult(res), []);
+  // The plan screen reports every change; keep it for back-navigation and
+  // debounce-persist it so a relaunch restores the last setup.
+  const updateDraft = useCallback((d) => {
+    setDraft(d);
+    clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = setTimeout(() => savePlanDraft(d), 600);
+  }, []);
+
+  const handleRouteBuilt = useCallback((res) => {
+    success();
+    setResult(res);
+  }, []);
 
   const regenerate = useCallback(async () => {
-    if (!result?.plan) return;
+    if (!result?.plan || regenerating) return;
     try {
+      setRegenerating(true);
       const fresh = await buildRoute(result.start, { ...result.plan, jitter: 0.7 }, result.city);
       setResult({
         ...fresh,
@@ -38,25 +67,41 @@ export default function App() {
         plan: result.plan,
         city: result.city,
       });
+      success();
     } catch (e) {
       Alert.alert('Could not regenerate', e.message);
+    } finally {
+      setRegenerating(false);
     }
-  }, [result]);
+  }, [result, regenerating]);
 
-  let screen;
+  const startRun = useCallback(() => {
+    thump();
+    setRunning(true);
+  }, []);
+
+  let screen = null;
   if (running && result) {
     screen = <RunScreen result={result} settings={settings} onExit={() => setRunning(false)} />;
   } else if (result) {
     screen = (
       <RouteScreen
         result={result}
+        regenerating={regenerating}
         onBack={() => setResult(null)}
         onRegenerate={regenerate}
-        onStartRun={() => setRunning(true)}
+        onStartRun={startRun}
       />
     );
-  } else {
-    screen = <PlanScreen onRouteBuilt={handleRouteBuilt} onOpenSettings={() => setSettingsOpen(true)} />;
+  } else if (draftLoaded) {
+    screen = (
+      <PlanScreen
+        draft={draft}
+        onDraftChange={updateDraft}
+        onRouteBuilt={handleRouteBuilt}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+    );
   }
 
   return (

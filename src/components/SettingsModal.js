@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, Switch } from 'react-native';
+import { Modal, Pressable, Text, TouchableOpacity, View, Switch } from 'react-native';
 import { useTheme, themedStyles, shadow } from '../theme';
 import { TALK_LEVELS } from '../lib/settings';
 import Glass from './Glass';
@@ -9,8 +9,9 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
   const styles = getStyles(theme);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Glass style={styles.sheet}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable onPress={(e) => e.stopPropagation()}>
+          <Glass style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>Settings</Text>
 
@@ -63,8 +64,9 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
           <TouchableOpacity style={styles.done} onPress={onClose}>
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
-        </Glass>
-      </View>
+          </Glass>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

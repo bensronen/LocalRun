@@ -1,11 +1,11 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 
-export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }) {
+export default function RouteScreen({ result, regenerating, onBack, onRegenerate, onStartRun }) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const { route, highlights, shape, start, unit, distanceMeters, targetMeters, rationale } = result;
@@ -142,15 +142,23 @@ export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }
           );
         })}
 
-        <TouchableOpacity style={styles.startBtn} onPress={onStartRun}>
+        <TouchableOpacity
+          style={[styles.startBtn, regenerating && styles.disabled]}
+          onPress={onStartRun}
+          disabled={regenerating}
+        >
           <Text style={styles.startText}>Start run</Text>
         </TouchableOpacity>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.secondary} onPress={onBack}>
+          <TouchableOpacity style={styles.secondary} onPress={onBack} disabled={regenerating}>
             <Text style={styles.secondaryText}>Adjust</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondary} onPress={onRegenerate}>
-            <Text style={styles.secondaryText}>↻ Another</Text>
+          <TouchableOpacity style={styles.secondary} onPress={onRegenerate} disabled={regenerating}>
+            {regenerating ? (
+              <ActivityIndicator size="small" color={theme.accent} />
+            ) : (
+              <Text style={styles.secondaryText}>↻ Another</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -292,4 +300,5 @@ const getStyles = themedStyles((theme) => ({
     alignItems: 'center',
   },
   secondaryText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
+  disabled: { opacity: 0.5 },
 }));

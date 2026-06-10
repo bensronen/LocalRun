@@ -9,6 +9,7 @@ import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
 import { ambientInterval } from '../lib/settings';
 import { dist, formatClock, formatPace, turnsFromGeometry, speak, stopSpeaking, maneuverIcon } from '../lib/nav';
+import { success } from '../lib/haptics';
 
 export default function RunScreen({ result, settings, onExit }) {
   useKeepAwake();
@@ -66,12 +67,25 @@ export default function RunScreen({ result, settings, onExit }) {
     if (eng.sub) eng.sub.remove();
     eng.sub = null;
     setDone(true);
+    success();
     const e = (Date.now() - eng.startMs - eng.pausedMs) / 1000;
     speak(
       `Run complete. ${fmt.km(eng.distM, unit)} in ${formatClock(e)}. Nice work.`,
       { voice, priority: true }
     );
   }, [eng, unit, voice]);
+
+  // Ending a run throws away its stats — never do it on a stray tap.
+  const confirmExit = useCallback(() => {
+    if (done || !eng.started) {
+      onExit();
+      return;
+    }
+    Alert.alert('End this run?', 'Your time and distance will be discarded.', [
+      { text: 'Keep running', style: 'cancel' },
+      { text: 'End run', style: 'destructive', onPress: onExit },
+    ]);
+  }, [done, eng, onExit]);
 
   const onLocation = useCallback(
     (loc) => {
@@ -250,7 +264,7 @@ export default function RunScreen({ result, settings, onExit }) {
           </View>
         </Glass>
       )}
-      <TouchableOpacity style={styles.exitWrap} onPress={onExit}>
+      <TouchableOpacity style={styles.exitWrap} onPress={confirmExit}>
         <Glass style={styles.exitBtn} isInteractive>
           <Text style={styles.exitText}>✕</Text>
         </Glass>

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'localrun.settings.v1';
+const PLAN_KEY = 'localrun.plandraft.v1';
 
 export const DEFAULT_SETTINGS = { talk: 'normal', voice: true, dark: false };
 
@@ -30,6 +31,25 @@ export async function loadSettings() {
 export async function saveSettings(s) {
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(s));
+  } catch {
+    // ignore persistence errors
+  }
+}
+
+// The plan screen's draft (city, start, distance, unit, shape, vibes) — kept so
+// going back from a route, or relaunching the app, never loses what you set up.
+export async function loadPlanDraft() {
+  try {
+    const s = await AsyncStorage.getItem(PLAN_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function savePlanDraft(draft) {
+  try {
+    await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(draft));
   } catch {
     // ignore persistence errors
   }

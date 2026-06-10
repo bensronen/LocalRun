@@ -18,6 +18,7 @@ import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
 import { geocode, geocodeSuggest, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
+import { tap } from '../lib/haptics';
 import { CITIES, cityForPoint } from '../data/cities';
 
 const VIBES = [
@@ -27,24 +28,32 @@ const VIBES = [
   { key: 'neighborhoods', label: 'Neighborhoods' },
 ];
 
-export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
+export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings }) {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const [city, setCity] = useState(CITIES[0]);
+  const initCity = (draft && CITIES.find((c) => c.id === draft.cityId)) || CITIES[0];
+  const [city, setCity] = useState(initCity);
   const [cityOpen, setCityOpen] = useState(false);
-  const [start, setStart] = useState(CITIES[0].defaultStart);
-  const [address, setAddress] = useState('');
+  const [start, setStart] = useState(draft?.start || initCity.defaultStart);
+  const [address, setAddress] = useState(draft?.address || '');
   const [suggestions, setSuggestions] = useState([]);
-  const [distanceKm, setDistanceKm] = useState(5);
-  const [unit, setUnit] = useState('km');
-  const [shape, setShape] = useState('loop');
-  const [vibes, setVibes] = useState([]);
+  const [distanceKm, setDistanceKm] = useState(draft?.distanceKm ?? 5);
+  const [unit, setUnit] = useState(draft?.unit || 'km');
+  const [shape, setShape] = useState(draft?.shape || 'loop');
+  const [vibes, setVibes] = useState(draft?.vibes || []);
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
 
   const suggestTimer = useRef(null);
   const suggestSeq = useRef(0);
   useEffect(() => () => clearTimeout(suggestTimer.current), []);
+
+  // Report the whole plan upward so leaving this screen (or the app) never
+  // loses what was set up here.
+  useEffect(() => {
+    onDraftChange?.({ cityId: city.id, start, address, distanceKm, unit, shape, vibes });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city, start, address, distanceKm, unit, shape, vibes]);
 
   const distMeters = distanceKm * 1000;
 
@@ -54,6 +63,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   }
 
   function switchCity(c) {
+    tap();
     setCity(c);
     setStart(c.defaultStart);
     clearAddress();
@@ -76,6 +86,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   }
 
   function pickSuggestion(s) {
+    tap();
     suggestSeq.current += 1; // invalidate any in-flight request
     setStart(s);
     setAddress(s.name);
@@ -84,6 +95,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
   }
 
   function toggleVibe(key) {
+    tap();
     setVibes((v) => (v.includes(key) ? v.filter((k) => k !== key) : [...v, key]));
   }
 
@@ -249,6 +261,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
             key={p.label}
             style={styles.preset}
             onPress={() => {
+              tap();
               setStart(p);
               clearAddress();
             }}
@@ -297,7 +310,10 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
             <TouchableOpacity
               key={u}
               style={[styles.unitBtn, unit === u && styles.unitBtnActive]}
-              onPress={() => setUnit(u)}
+              onPress={() => {
+                tap();
+                setUnit(u);
+              }}
             >
               <Text style={[styles.unit, unit === u && styles.unitActive]}>{u}</Text>
             </TouchableOpacity>
@@ -329,7 +345,10 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
           <TouchableOpacity
             key={s.key}
             style={[styles.segment, shape === s.key && styles.segmentActive]}
-            onPress={() => setShape(s.key)}
+            onPress={() => {
+              tap();
+              setShape(s.key);
+            }}
           >
             <Text style={[styles.segmentText, shape === s.key && styles.segmentTextActive]}>
               {s.label}
