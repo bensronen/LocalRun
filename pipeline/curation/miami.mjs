@@ -228,18 +228,6 @@ curate('miami', [
     transit: 'Mid-Beach (bus 120)',
   },
   {
-    src: 'flagler-memorial-monument',
-    id: 'flagler-memorial-monument',
-    name: 'Flagler Memorial Monument',
-    category: 'viewpoint',
-    score: 3,
-    blurb: 'A 110-foot obelisk on a tiny man-made island in the bay.',
-    see: 'The monument to Miami’s railroad founder, ringed by water with skyline views all around.',
-    do: 'A striking landmark visible across the bay; reachable only by water.',
-    tip: null,
-    transit: 'South Beach (bus)',
-  },
-  {
     src: 'ichimura-miami-japanese-garden',
     id: 'ichimura-japanese-garden',
     name: 'Ichimura Miami-Japan Garden',

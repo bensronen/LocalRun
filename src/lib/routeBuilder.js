@@ -425,7 +425,13 @@ async function addSpur(start, waypoints, shape, target, profile) {
   for (let i = 0; i < 7; i++) {
     const d = (lo + hi) / 2;
     const p = destinationPoint(start, dir, d);
-    const r = await routeFor(start, [...waypoints, { id: '_spur', lat: p.lat, lng: p.lng }], shape, profile);
+    let r;
+    try {
+      r = await routeFor(start, [...waypoints, { id: '_spur', lat: p.lat, lng: p.lng }], shape, profile);
+    } catch {
+      hi = d; // spur point unroutable (water, etc.) — pull it closer
+      continue;
+    }
     const err = Math.abs(r.distanceMeters - target);
     if (err < bestErr) {
       bestErr = err;
@@ -462,13 +468,20 @@ async function selectOneWayDest(start, target, vibe, jitter, annotated, startZon
   }
 
   // Measure all candidate destinations in parallel; keep the best distance fit.
-  const measured = await Promise.all(
-    cands.map(async (d) => {
-      const r = await routeFor(start, [d], 'oneway', profile);
-      const overshoot = Math.max(0, r.distanceMeters - target * 1.02);
-      return { d, score: Math.abs(r.distanceMeters - target) + overshoot * 0.5 };
-    })
-  );
+  // Unroutable destinations are simply skipped, not fatal.
+  const measured = (
+    await Promise.all(
+      cands.map(async (d) => {
+        try {
+          const r = await routeFor(start, [d], 'oneway', profile);
+          const overshoot = Math.max(0, r.distanceMeters - target * 1.02);
+          return { d, score: Math.abs(r.distanceMeters - target) + overshoot * 0.5 };
+        } catch {
+          return null;
+        }
+      })
+    )
+  ).filter(Boolean);
   measured.sort((a, b) => a.score - b.score);
   return measured.length ? [measured[0].d] : [];
 }
@@ -503,7 +516,12 @@ async function fitLongCorridor(start, waypoints, shape, target, profile, route) 
     const b = Math.min(full.length, a + keep);
     a = Math.max(0, b - keep);
     const wp = waypoints.map((w, j) => (j === idx ? { ...w, corridor: full.slice(a, b) } : w));
-    const r = await routeFor(start, wp, shape, profile);
+    let r;
+    try {
+      r = await routeFor(start, wp, shape, profile);
+    } catch {
+      break; // keep the best fit found so far
+    }
     const err = Math.abs(r.distanceMeters - target);
     if (err < bestErr) {
       bestErr = err;
@@ -536,7 +554,13 @@ async function addOnewayDetour(start, waypoints, target, profile) {
     const p = destinationPoint(mid, perp, d);
     const detour = { id: '_detour', lat: p.lat, lng: p.lng, _d: Math.min(destD * 0.6, target * 0.4) };
     const seq = [...waypoints, detour].sort((a, b) => (a._d || 0) - (b._d || 0));
-    const r = await routeFor(start, seq, 'oneway', profile);
+    let r;
+    try {
+      r = await routeFor(start, seq, 'oneway', profile);
+    } catch {
+      hi = d; // detour point unroutable — pull it closer
+      continue;
+    }
     const err = Math.abs(r.distanceMeters - target);
     if (err < bestErr) {
       bestErr = err;
@@ -574,16 +598,46 @@ export async function buildRoute(
       selectLoopWaypoints(start, targetMeters, vibe, 0.6, annotated, startZone),
     ]);
     if (!sets.length) throw new Error('No scenic waypoints found near there at this distance.');
-    const scored = await Promise.all(
-      sets.map(async (set) => {
-        const r = await routeFor(start, set, shape, profile);
-        const sc = sceneryScore(r.coordinates, annotated, city.beauty) - 0.9 * selfOverlap(r.coordinates);
-        return { set, r, sc };
-      })
-    );
-    scored.sort((a, b) => b.sc - a.sc);
-    waypoints = scored[0].set;
-    route = scored[0].r;
+    // A set containing one unroutable waypoint (a pier, an island) must not kill the
+    // build — score the sets that route, and only fall back if none do.
+    const scored = (
+      await Promise.all(
+        sets.map(async (set) => {
+          try {
+            const r = await routeFor(start, set, shape, profile);
+            const sc =
+              sceneryScore(r.coordinates, annotated, city.beauty) - 0.9 * selfOverlap(r.coordinates);
+            return { set, r, sc };
+          } catch {
+            return null;
+          }
+        })
+      )
+    ).filter(Boolean);
+    if (scored.length) {
+      scored.sort((a, b) => b.sc - a.sc);
+      waypoints = scored[0].set;
+      route = scored[0].r;
+    } else {
+      // Every candidate set failed; seed from the best single feature that routes.
+      const ranked = annotated
+        .filter((p) => (p.corridor || p._d > 150) && p._d <= targetMeters * 0.55)
+        .sort(
+          (a, b) =>
+            valueOf(b, vibe, jitter) * (1 + scenicLength(b) / 1000) -
+            valueOf(a, vibe, jitter) * (1 + scenicLength(a) / 1000)
+        );
+      for (const cand of ranked) {
+        try {
+          route = await routeFor(start, [cand], shape, profile);
+          waypoints = [cand];
+          break;
+        } catch {
+          // unroutable — try the next feature
+        }
+      }
+      if (!route) throw new Error('Could not route to any scenic spot near there — try a different start.');
+    }
   } else {
     waypoints = await selectOneWayDest(start, targetMeters, vibe, jitter, annotated, startZone, profile);
     if (!waypoints.length) {
@@ -606,7 +660,12 @@ export async function buildRoute(
   let guard = 0;
   while (route.distanceMeters > hi && waypoints.length > 1 && guard++ < 6) {
     const trimmed = trimOne(waypoints, shape);
-    const r = await routeFor(start, trimmed, shape, profile);
+    let r;
+    try {
+      r = await routeFor(start, trimmed, shape, profile);
+    } catch {
+      break;
+    }
     if (r.distanceMeters >= route.distanceMeters) break;
     waypoints = trimmed;
     route = r;
@@ -625,7 +684,12 @@ export async function buildRoute(
           valueOf(a, vibe, jitter) * (1 + scenicLength(a) / 1000)
       );
     for (const cand of ranked.slice(0, 8)) {
-      let r = await routeFor(start, [cand], shape, profile);
+      let r;
+      try {
+        r = await routeFor(start, [cand], shape, profile);
+      } catch {
+        continue;
+      }
       let wp = [cand];
       if (cand.corridor && r.distanceMeters > hi) {
         const fit = await fitLongCorridor(start, [cand], shape, targetMeters, profile, r);
@@ -659,7 +723,12 @@ export async function buildRoute(
     );
     const cand = pool.shift();
     const trial = orderWaypoints([...waypoints, cand], shape);
-    const r = await routeFor(start, trial, shape, profile);
+    let r;
+    try {
+      r = await routeFor(start, trial, shape, profile);
+    } catch {
+      continue; // candidate unroutable — try the next one
+    }
     if (r.distanceMeters <= hi && r.distanceMeters > route.distanceMeters) {
       waypoints = trial;
       route = r;
