@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useTheme, themedStyles, fmt, shadow } from '../theme';
+import Icon from '../components/Icon';
 import { loadRuns, deleteRun, updatePhotoCaption } from '../lib/history';
 import { formatClock, formatPace } from '../lib/nav';
 
@@ -26,7 +27,7 @@ function dateLabel(ts) {
   });
 }
 
-export default function HistoryScreen({ onBack }) {
+export default function HistoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
   const [runs, setRuns] = useState([]);
@@ -51,13 +52,8 @@ export default function HistoryScreen({ onBack }) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.backText}>‹ Plan</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.title}>Your runs</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 120 }}>
+      <Text style={[styles.title, { marginTop: 16 }]}>Your runs</Text>
 
       {runs.length === 0 && (
         <Text style={styles.empty}>
@@ -85,7 +81,10 @@ export default function HistoryScreen({ onBack }) {
               <Text style={styles.cardStarsDim}>{r.rating ? '★'.repeat(5 - r.rating) : ''}</Text>
             </Text>
             {(r.photos || []).length > 0 && (
-              <Text style={styles.cardPhotos}>📷 {r.photos.length}</Text>
+              <View style={styles.cardPhotosRow}>
+                <Icon name="photo" size={13} color={theme.textDim} />
+                <Text style={styles.cardPhotos}>{r.photos.length}</Text>
+              </View>
             )}
           </View>
         </TouchableOpacity>
@@ -139,10 +138,11 @@ function RunDetail({ run, onBack, onDelete }) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 120 }}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.backText}>‹ Runs</Text>
+        <TouchableOpacity style={styles.backRow} onPress={onBack}>
+          <Icon name="chevronLeft" size={15} color={theme.accent} />
+          <Text style={styles.backText}>Runs</Text>
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>{run.cityName}</Text>
@@ -170,7 +170,7 @@ function RunDetail({ run, onBack, onDelete }) {
               .map((p) => (
                 <Marker key={p.ts} coordinate={{ latitude: p.lat, longitude: p.lng }}>
                   <View style={styles.photoPin}>
-                    <Text style={styles.photoPinText}>📷</Text>
+                    <Icon name="photo" size={12} color="#fff" />
                   </View>
                 </Marker>
               ))}
@@ -235,10 +235,15 @@ function RunDetail({ run, onBack, onDelete }) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableOpacity style={styles.viewerClose} onPress={() => setViewer(null)}>
-            <Text style={styles.viewerCloseText}>✕</Text>
+            <Icon name="close" size={17} color="#fff" />
           </TouchableOpacity>
           {viewer && <Image source={{ uri: viewer.uri }} style={styles.viewerImage} resizeMode="contain" />}
-          {!!viewer?.placeName && <Text style={styles.viewerPlace}>📍 {viewer.placeName}</Text>}
+          {!!viewer?.placeName && (
+            <View style={styles.viewerPlaceRow}>
+              <Icon name="pin" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.viewerPlace}>{viewer.placeName}</Text>
+            </View>
+          )}
           <View style={styles.viewerCaptionRow}>
             <TextInput
               style={styles.viewerInput}
@@ -279,6 +284,7 @@ function DetailStat({ value, label }) {
 const getStyles = themedStyles((theme) => ({
   screen: { flex: 1, paddingHorizontal: 18 },
   headerRow: { marginTop: 8, flexDirection: 'row' },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   backText: { color: theme.accent, fontSize: 16, fontWeight: '600' },
   title: { color: theme.text, fontSize: 34, fontWeight: '700', letterSpacing: -0.5, marginTop: 8 },
   subtitle: { color: theme.textDim, fontSize: 15, marginTop: 2 },
@@ -298,6 +304,7 @@ const getStyles = themedStyles((theme) => ({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   cardStars: { color: theme.accent, fontSize: 14 },
   cardStarsDim: { color: theme.border },
+  cardPhotosRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardPhotos: { color: theme.textDim, fontSize: 13 },
   mapWrap: { height: 180, borderRadius: 16, overflow: 'hidden', marginTop: 14 },
   photoPin: {
@@ -310,7 +317,6 @@ const getStyles = themedStyles((theme) => ({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  photoPinText: { fontSize: 12 },
   statsCard: {
     backgroundColor: theme.card,
     borderRadius: 14,
@@ -362,15 +368,15 @@ const getStyles = themedStyles((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  viewerCloseText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   viewerImage: { flex: 1, marginTop: 70, marginBottom: 12 },
-  viewerPlace: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+  viewerPlaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     marginBottom: 10,
   },
+  viewerPlace: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' },
   viewerCaptionRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
   viewerInput: {
     flex: 1,

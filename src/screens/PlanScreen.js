@@ -16,6 +16,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
+import Icon from '../components/Icon';
 import { geocode, geocodeSuggest, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
 import { loadBoosts, loadRuns } from '../lib/history';
@@ -46,7 +47,7 @@ function askExplore(seenCount) {
   );
 }
 
-export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings, onOpenHistory }) {
+export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings }) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const initCity = (draft && CITIES.find((c) => c.id === draft.cityId)) || CITIES[0];
@@ -213,7 +214,7 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 120 }}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.headerRow}>
@@ -221,14 +222,9 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
           <Text style={styles.title}>LocalRun</Text>
           <Text style={styles.subtitle}>Run a city like a local.</Text>
         </View>
-        <View style={styles.headerBtns}>
-          <TouchableOpacity style={styles.gear} onPress={onOpenHistory}>
-            <Text style={styles.gearIcon}>🕘</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
-            <Text style={styles.gearIcon}>⚙︎</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
+          <Icon name="settings" size={19} color={theme.accent} />
+        </TouchableOpacity>
       </View>
 
       {/* City selector */}
@@ -236,7 +232,7 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
         <Text style={styles.cityBtnText}>
           {city.emoji} {city.name}
         </Text>
-        <Text style={styles.cityBtnChevron}>▾</Text>
+        <Icon name="chevronDown" size={14} color={theme.textDim} />
       </TouchableOpacity>
       <Modal visible={cityOpen} transparent animationType="fade" onRequestClose={() => setCityOpen(false)}>
         <TouchableOpacity style={styles.cityBackdrop} activeOpacity={1} onPress={() => setCityOpen(false)}>
@@ -254,7 +250,7 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
                   <Text style={[styles.cityItemText, c.id === city.id && styles.cityItemTextActive]}>
                     {c.emoji} {c.name}
                   </Text>
-                  {c.id === city.id && <Text style={styles.cityCheck}>✓</Text>}
+                  {c.id === city.id && <Icon name="check" size={15} color={theme.accent} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -265,10 +261,11 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
       {/* Community pulse */}
       {community?.totalRuns > 0 && (
         <View style={styles.pulse}>
+          <Icon name="runner" size={15} color={theme.accent} />
           <Text style={styles.pulseText} numberOfLines={2}>
-            🏃 {community.totalRuns} {community.totalRuns === 1 ? 'run' : 'runs'} by the community
+            {community.totalRuns} {community.totalRuns === 1 ? 'run' : 'runs'} by the community
             {community.top?.length
-              ? ` · 📷 most shot: ${
+              ? ` · most shot: ${
                   city.places.find((p) => p.id === community.top[0].id)?.name || community.top[0].id
                 }`
               : ''}
@@ -459,7 +456,6 @@ const getStyles = themedStyles((theme) => ({
   },
   title: { color: theme.text, fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { color: theme.textDim, fontSize: 15, marginTop: 2, marginBottom: 16 },
-  headerBtns: { flexDirection: 'row', gap: 8 },
   gear: {
     width: 40,
     height: 40,
@@ -470,7 +466,6 @@ const getStyles = themedStyles((theme) => ({
     marginTop: 6,
     ...shadow,
   },
-  gearIcon: { color: theme.accent, fontSize: 19 },
   cityBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -482,7 +477,6 @@ const getStyles = themedStyles((theme) => ({
     ...shadow,
   },
   cityBtnText: { color: theme.text, fontWeight: '600', fontSize: 16 },
-  cityBtnChevron: { color: theme.textDim, fontSize: 13, fontWeight: '700' },
   cityBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -507,15 +501,17 @@ const getStyles = themedStyles((theme) => ({
   cityItemActive: { backgroundColor: theme.tint },
   cityItemText: { color: theme.text, fontWeight: '500', fontSize: 16 },
   cityItemTextActive: { color: theme.accent, fontWeight: '700' },
-  cityCheck: { color: theme.accent, fontWeight: '700', fontSize: 15 },
   pulse: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: theme.tint,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginTop: 10,
   },
-  pulseText: { color: theme.accent, fontSize: 13, fontWeight: '500' },
+  pulseText: { color: theme.accent, fontSize: 13, fontWeight: '500', flex: 1 },
   label: {
     color: theme.textDim,
     fontSize: 13,

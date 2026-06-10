@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
+import Icon from '../components/Icon';
 import { CATEGORY_META } from '../data/categories';
 
 export default function RouteScreen({ result, regenerating, onBack, onRegenerate, onStartRun }) {
@@ -65,7 +66,8 @@ export default function RouteScreen({ result, regenerating, onBack, onRegenerate
         </MapView>
         <TouchableOpacity style={styles.backWrap} onPress={onBack}>
           <Glass style={styles.backBtn} isInteractive>
-            <Text style={styles.backText}>‹ Plan</Text>
+            <Icon name="chevronLeft" size={14} color={theme.text} />
+            <Text style={styles.backText}>Plan</Text>
           </Glass>
         </TouchableOpacity>
       </View>
@@ -105,9 +107,15 @@ export default function RouteScreen({ result, regenerating, onBack, onRegenerate
 
         {shape === 'oneway' && last && (
           <View style={styles.endCard}>
-            <Text style={styles.endTitle}>🏁 Finish at {last.name}</Text>
+            <View style={styles.endRow}>
+              <Icon name="flag" size={15} color={theme.text} />
+              <Text style={styles.endTitle}>Finish at {last.name}</Text>
+            </View>
             {last.transit && (
-              <Text style={styles.endTransit}>🚇 Ride back from: {last.transit}</Text>
+              <View style={[styles.endRow, { marginTop: 6 }]}>
+                <Icon name="transit" size={13} color={theme.accent} />
+                <Text style={styles.endTransit}>Ride back from: {last.transit}</Text>
+              </View>
             )}
           </View>
         )}
@@ -129,21 +137,25 @@ export default function RouteScreen({ result, regenerating, onBack, onRegenerate
               <View style={{ flex: 1 }}>
                 <View style={styles.itemHead}>
                   <Text style={styles.itemName}>{h.name}</Text>
-                  <Text style={[styles.itemTag, { color: meta.color }]}>
-                    {meta.emoji} {meta.label}
-                  </Text>
+                  <View style={styles.itemTagRow}>
+                    {meta.icon && <Icon name={meta.icon} size={11} color={meta.color} />}
+                    <Text style={[styles.itemTag, { color: meta.color }]}>{meta.label}</Text>
+                  </View>
                 </View>
                 <Text style={styles.itemBlurb}>{h.blurb}</Text>
                 {community?.places?.[h.id]?.photos > 0 && (
-                  <Text style={styles.communityTag}>
-                    📷 Photographed by {community.places[h.id].photos}{' '}
-                    {community.places[h.id].photos === 1 ? 'runner' : 'runners'}
-                  </Text>
+                  <View style={styles.communityRow}>
+                    <Icon name="photo" size={12} color={theme.accent} />
+                    <Text style={styles.communityTag}>
+                      Photographed by {community.places[h.id].photos}{' '}
+                      {community.places[h.id].photos === 1 ? 'runner' : 'runners'}
+                    </Text>
+                  </View>
                 )}
-                {h.see && <DetailLine icon="👀" text={h.see} />}
-                {h.do && <DetailLine icon="✨" text={h.do} />}
-                {h.tip && <DetailLine icon="💡" text={h.tip} dim />}
-                {h.transit && <DetailLine icon="🚇" text={h.transit} dim />}
+                {h.see && <DetailLine icon="eye" text={h.see} />}
+                {h.do && <DetailLine icon="sparkles" text={h.do} />}
+                {h.tip && <DetailLine icon="bulb" text={h.tip} dim />}
+                {h.transit && <DetailLine icon="transit" text={h.transit} dim />}
               </View>
             </View>
           );
@@ -164,7 +176,10 @@ export default function RouteScreen({ result, regenerating, onBack, onRegenerate
             {regenerating ? (
               <ActivityIndicator size="small" color={theme.accent} />
             ) : (
-              <Text style={styles.secondaryText}>↻ Another</Text>
+              <View style={styles.secondaryRow}>
+                <Icon name="refresh" size={14} color={theme.accent} />
+                <Text style={styles.secondaryText}>Another</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -184,10 +199,16 @@ function Stat({ value, label }) {
 }
 
 function DetailLine({ icon, text, dim }) {
-  const styles = getStyles(useTheme());
+  const theme = useTheme();
+  const styles = getStyles(theme);
   return (
     <View style={styles.detailRow}>
-      <Text style={styles.detailIcon}>{icon}</Text>
+      <Icon
+        name={icon}
+        size={13}
+        color={dim ? theme.textDim : theme.accent}
+        style={{ marginTop: 2 }}
+      />
       <Text style={[styles.detailText, dim && styles.detailDim]}>{text}</Text>
     </View>
   );
@@ -198,6 +219,9 @@ const getStyles = themedStyles((theme) => ({
   mapWrap: { height: '42%' },
   backWrap: { position: 'absolute', top: 50, left: 14 },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -267,8 +291,9 @@ const getStyles = themedStyles((theme) => ({
     marginTop: 16,
     ...shadow,
   },
-  endTitle: { color: theme.text, fontWeight: '800', fontSize: 15 },
-  endTransit: { color: theme.accent, fontSize: 13, marginTop: 6 },
+  endRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  endTitle: { color: theme.text, fontWeight: '700', fontSize: 15, flex: 1 },
+  endTransit: { color: theme.accent, fontSize: 13, flex: 1 },
   sectionTitle: { color: theme.text, fontSize: 20, fontWeight: '800', marginTop: 22 },
   sectionSub: { color: theme.textDim, fontSize: 13, marginBottom: 12, marginTop: 2 },
   item: { flexDirection: 'row', gap: 12, marginBottom: 18 },
@@ -283,11 +308,12 @@ const getStyles = themedStyles((theme) => ({
   itemNumText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   itemHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   itemName: { color: theme.text, fontWeight: '700', fontSize: 15, flex: 1 },
-  itemTag: { fontSize: 11, fontWeight: '700', marginLeft: 6 },
+  itemTagRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
+  itemTag: { fontSize: 11, fontWeight: '700' },
   itemBlurb: { color: theme.textDim, fontSize: 13, lineHeight: 19, marginTop: 3 },
-  communityTag: { color: theme.accent, fontSize: 12, fontWeight: '600', marginTop: 5 },
+  communityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  communityTag: { color: theme.accent, fontSize: 12, fontWeight: '600', flex: 1 },
   detailRow: { flexDirection: 'row', gap: 7, marginTop: 6 },
-  detailIcon: { fontSize: 12, marginTop: 1 },
   detailText: { color: theme.text, fontSize: 13, lineHeight: 18, flex: 1 },
   detailDim: { color: theme.textDim },
   startBtn: {
@@ -307,6 +333,7 @@ const getStyles = themedStyles((theme) => ({
     paddingVertical: 14,
     alignItems: 'center',
   },
+  secondaryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   secondaryText: { color: theme.accent, fontWeight: '600', fontSize: 15 },
   disabled: { opacity: 0.5 },
 }));

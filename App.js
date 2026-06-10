@@ -7,6 +7,7 @@ import RouteScreen from './src/screens/RouteScreen';
 import RunScreen from './src/screens/RunScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsModal from './src/components/SettingsModal';
+import TabBar from './src/components/TabBar';
 import { buildRoute } from './src/lib/routeBuilder';
 import { saveRun, boostsFromRun } from './src/lib/history';
 import { submitRun } from './src/lib/api';
@@ -28,7 +29,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draft, setDraft] = useState(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [tab, setTab] = useState('plan');
 
   const draftSaveTimer = useRef(null);
 
@@ -96,7 +97,10 @@ export default function App() {
     setResult(null);
   }, []);
 
+  // Top-level navigation: plan/history are sibling tabs; route and run
+  // screens take over the full screen (no tab bar).
   let screen = null;
+  let showTabs = false;
   if (running && result) {
     screen = (
       <RunScreen
@@ -106,8 +110,6 @@ export default function App() {
         onSave={handleSaveRun}
       />
     );
-  } else if (historyOpen) {
-    screen = <HistoryScreen onBack={() => setHistoryOpen(false)} />;
   } else if (result) {
     screen = (
       <RouteScreen
@@ -118,14 +120,17 @@ export default function App() {
         onStartRun={startRun}
       />
     );
+  } else if (tab === 'history') {
+    showTabs = true;
+    screen = <HistoryScreen />;
   } else if (draftLoaded) {
+    showTabs = true;
     screen = (
       <PlanScreen
         draft={draft}
         onDraftChange={updateDraft}
         onRouteBuilt={handleRouteBuilt}
         onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHistory={() => setHistoryOpen(true)}
       />
     );
   }
@@ -138,6 +143,7 @@ export default function App() {
         >
           <StatusBar style={settings.dark ? 'light' : 'dark'} />
           {screen}
+          {showTabs && <TabBar tab={tab} onChange={setTab} />}
           <SettingsModal
             visible={settingsOpen}
             settings={settings}

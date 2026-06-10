@@ -65,13 +65,12 @@ export function stopSpeaking() {
   Speech.stop();
 }
 
-// A short emoji/word for a maneuver, for the visual banner.
+// Icon name (see components/Icon.js) for a maneuver, for the visual banner.
 export function maneuverIcon(m) {
   const mod = (m.modifier || '').toLowerCase();
-  if (m.type === 'arrive') return '🏁';
-  if (m.type === 'depart') return '🏃';
-  if (mod.includes('left')) return '↰';
-  if (mod.includes('right')) return '↱';
-  if (mod.includes('straight') || mod.includes('uturn')) return '↑';
-  return '↑';
+  if (m.type === 'arrive') return 'flag';
+  if (m.type === 'depart') return 'runner';
+  if (mod.includes('left')) return 'turnLeft';
+  if (mod.includes('right')) return 'turnRight';
+  return 'straight';
 }

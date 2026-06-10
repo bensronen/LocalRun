@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useTheme, themedStyles, fmt } from '../theme';
 import Glass from '../components/Glass';
+import Icon from '../components/Icon';
 import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
 import { ambientInterval } from '../lib/settings';
@@ -348,7 +349,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
         ))}
         <Marker coordinate={{ latitude: finishPt.latitude, longitude: finishPt.longitude }}>
           <View style={[styles.pin, { backgroundColor: theme.good }]}>
-            <Text style={styles.pinText}>🏁</Text>
+            <Icon name="flag" size={13} color="#fff" />
           </View>
         </Marker>
         {photos
@@ -356,7 +357,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
           .map((p) => (
             <Marker key={p.ts} coordinate={{ latitude: p.lat, longitude: p.lng }} title={p.placeName || 'Photo'}>
               <View style={[styles.pin, { backgroundColor: theme.accentDeep }]}>
-                <Text style={styles.pinText}>📷</Text>
+                <Icon name="photo" size={12} color="#fff" />
               </View>
             </Marker>
           ))}
@@ -365,7 +366,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
       {/* Direction banner */}
       {banner && !done && (
         <Glass style={styles.banner}>
-          <Text style={styles.bannerIcon}>{banner.icon}</Text>
+          <Icon name={banner.icon} size={32} color={theme.accent} weight="bold" />
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerInstr} numberOfLines={2}>
               {banner.instruction}
@@ -376,7 +377,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
       )}
       <TouchableOpacity style={styles.exitWrap} onPress={confirmExit}>
         <Glass style={styles.exitBtn} isInteractive>
-          <Text style={styles.exitText}>✕</Text>
+          <Icon name="close" size={17} color={theme.text} />
         </Glass>
       </TouchableOpacity>
 
@@ -392,7 +393,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
       {!done && (
         <TouchableOpacity style={styles.cameraWrap} onPress={takePhoto}>
           <Glass style={styles.cameraBtn} isInteractive>
-            <Text style={styles.cameraIcon}>📷</Text>
+            <Icon name="camera" size={24} color={theme.accent} />
           </Glass>
         </TouchableOpacity>
       )}
@@ -407,7 +408,7 @@ export default function RunScreen({ result, settings, onExit, onSave }) {
           </View>
           <Text style={styles.avg}>
             avg {formatPace(avgPace)} /{unit} · {splits.length} {splits.length === 1 ? 'split' : 'splits'} done
-            {photos.length > 0 ? ` · ${photos.length} 📷` : ''}
+            {photos.length > 0 ? ` · ${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}` : ''}
           </Text>
           <View style={styles.controls}>
             <TouchableOpacity style={styles.secondary} onPress={togglePause}>
@@ -557,7 +558,6 @@ const getStyles = themedStyles((theme) => ({
     gap: 12,
     overflow: 'hidden',
   },
-  bannerIcon: { color: theme.accent, fontSize: 34, fontWeight: '800' },
   bannerInstr: { color: theme.text, fontSize: 17, fontWeight: '700' },
   bannerMeters: { color: theme.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
   exitWrap: { position: 'absolute', top: 54, right: 16 },
@@ -569,7 +569,6 @@ const getStyles = themedStyles((theme) => ({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  exitText: { color: theme.text, fontSize: 18, fontWeight: '600' },
   callout: {
     position: 'absolute',
     left: 16,
@@ -590,7 +589,6 @@ const getStyles = themedStyles((theme) => ({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  cameraIcon: { fontSize: 24 },
   panel: {
     position: 'absolute',
     left: 0,
