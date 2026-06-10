@@ -11,7 +11,7 @@ const ENDPOINTS = [
 ];
 
 // Public Overpass mirrors reject UA-less requests (406/403); identify ourselves like fetchWiki.
-const UA = 'CityRunLocal/0.1 (scenic running route prototype; contact: local-app@example.com)';
+const UA = 'LocalRun/0.1 (scenic running route prototype; contact: local-app@example.com)';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

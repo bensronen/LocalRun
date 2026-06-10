@@ -33,10 +33,6 @@ export function angularDiff(a, b) {
   return d > 180 ? 360 - d : d;
 }
 
-export function ll(p) {
-  return { lat: p.lat, lng: p.lng };
-}
-
 // Point reached by traveling distMeters from `from` along bearingDeg (deg from north).
 export function destinationPoint(from, bearingDeg, distMeters) {
   const d = distMeters / R;
@@ -53,21 +49,4 @@ export function destinationPoint(from, bearingDeg, distMeters) {
       Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
     );
   return { lat: toDeg(lat2), lng: ((toDeg(lng2) + 540) % 360) - 180 };
-}
-
-// Bounding region that fits all points, for map fitToCoordinates fallbacks.
-export function boundsOf(points) {
-  let minLat = Infinity,
-    maxLat = -Infinity,
-    minLng = Infinity,
-    maxLng = -Infinity;
-  for (const p of points) {
-    const lat = p.latitude ?? p.lat;
-    const lng = p.longitude ?? p.lng;
-    minLat = Math.min(minLat, lat);
-    maxLat = Math.max(maxLat, lat);
-    minLng = Math.min(minLng, lng);
-    maxLng = Math.max(maxLng, lng);
-  }
-  return { minLat, maxLat, minLng, maxLng };
 }

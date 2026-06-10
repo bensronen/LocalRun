@@ -1,5 +1,5 @@
 {
-  "name": "cityrun",
+  "name": "localrun",
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
@@ -7,6 +7,7 @@
     "@react-native-community/slider": "5.0.1",
     "expo": "~54.0.0",
     "expo-keep-awake": "~15.0.8",
+    "expo-linear-gradient": "~15.0.8",
     "expo-location": "~19.0.8",
     "expo-speech": "~14.0.8",
     "expo-status-bar": "~3.0.9",

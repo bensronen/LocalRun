@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "Local",
-    "slug": "local",
+    "name": "LocalRun",
+    "slug": "localrun",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "CityRun uses your location to start a scenic running route from where you are."
+        "NSLocationWhenInUseUsageDescription": "LocalRun uses your location to start a scenic running route from where you are."
       }
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "CityRun uses your location to start a scenic running route from where you are."
+          "locationWhenInUsePermission": "LocalRun uses your location to start a scenic running route from where you are."
         }
       ]
     ],

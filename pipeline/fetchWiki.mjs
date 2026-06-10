@@ -6,7 +6,7 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { CITIES } from './config.mjs';
 
-const UA = 'CityRunLocal/0.1 (scenic running route prototype; contact: local-app@example.com)';
+const UA = 'LocalRun/0.1 (scenic running route prototype; contact: local-app@example.com)';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function geosearch(host, lat, lng, radius, extra = '') {

@@ -3,12 +3,14 @@
 import { NYC } from './nyc';
 import { SF } from './sf';
 import { BOSTON } from './boston';
+import { CHICAGO } from './chicago';
+import { AUSTIN } from './austin';
+import { MIAMI } from './miami';
+import { LONDON } from './london';
+import { PARIS } from './paris';
 import { TOKYO } from './tokyo';
 
-export { CATEGORY_META } from '../categories';
-
-export const CITIES = [NYC, SF, BOSTON, TOKYO];
-export const CITY_BY_ID = Object.fromEntries(CITIES.map((c) => [c.id, c]));
+export const CITIES = [NYC, SF, BOSTON, CHICAGO, AUSTIN, MIAMI, LONDON, PARIS, TOKYO];
 
 // Which city a coordinate falls in (bbox hit, else nearest center). Lets us pick the
 // right dataset from "my location" or a dropped pin.

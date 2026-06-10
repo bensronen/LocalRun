@@ -118,7 +118,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>Local</Text>
+          <Text style={styles.title}>LocalRun</Text>
           <Text style={styles.subtitle}>Run a city like a local.</Text>
         </View>
         <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
@@ -275,7 +275,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
 
       <TouchableOpacity style={styles.cta} onPress={build} disabled={busy}>
         {busy ? (
-          <ActivityIndicator color="#021018" />
+          <ActivityIndicator color={theme.onAccent} />
         ) : (
           <Text style={styles.ctaText}>Build my run →</Text>
         )}
@@ -292,7 +292,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 18 },
+  screen: { flex: 1, paddingHorizontal: 18 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -368,12 +368,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     bottom: 10,
-    backgroundColor: 'rgba(11,18,32,0.85)',
+    backgroundColor: theme.overlay,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  mapHintText: { color: theme.text, fontSize: 12, fontWeight: '600' },
+  mapHintText: { color: theme.onOverlay, fontSize: 12, fontWeight: '600' },
   distHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   unitToggle: { flexDirection: 'row', gap: 14, marginBottom: 8 },
   unit: { color: theme.textDim, fontSize: 14, fontWeight: '700' },
@@ -412,6 +412,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 26,
   },
-  ctaText: { color: '#021018', fontSize: 17, fontWeight: '800' },
+  ctaText: { color: theme.onAccent, fontSize: 17, fontWeight: '800' },
   warn: { color: theme.textDim, fontSize: 12, marginTop: 14, lineHeight: 18 },
 });

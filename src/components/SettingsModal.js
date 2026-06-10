@@ -98,5 +98,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 26,
   },
-  doneText: { color: '#021018', fontSize: 16, fontWeight: '800' },
+  doneText: { color: theme.onAccent, fontSize: 16, fontWeight: '800' },
 });

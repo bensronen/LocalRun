@@ -167,18 +167,18 @@ function DetailLine({ icon, text, dim }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.bg },
+  screen: { flex: 1 },
   mapWrap: { height: '42%' },
   backBtn: {
     position: 'absolute',
     top: 50,
     left: 14,
-    backgroundColor: 'rgba(11,18,32,0.9)',
+    backgroundColor: theme.overlay,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
-  backText: { color: theme.text, fontWeight: '700', fontSize: 15 },
+  backText: { color: theme.onOverlay, fontWeight: '700', fontSize: 15 },
   pin: {
     width: 28,
     height: 28,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  startText: { color: '#021018', fontSize: 18, fontWeight: '800' },
+  startText: { color: theme.onAccent, fontSize: 18, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   secondary: {
     flex: 1,
@@ -285,12 +285,4 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
   },
   secondaryText: { color: theme.text, fontWeight: '700' },
-  primary: {
-    flex: 1,
-    backgroundColor: theme.accent,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryText: { color: '#021018', fontWeight: '800' },
 });
