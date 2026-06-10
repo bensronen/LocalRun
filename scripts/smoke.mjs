@@ -42,6 +42,34 @@ global.fetch = async (url) => {
 import { buildRoute } from '../src/lib/routeBuilder';
 import { CITIES } from '../src/data/cities';
 
+// Fraction of the route that doubles back on itself (out-and-back ≈ 1, clean loop ≈ 0).
+function overlapOf(coords) {
+  const pts = [];
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1];
+    const b = coords[i];
+    const seg = hav({ lat: a.latitude, lng: a.longitude }, { lat: b.latitude, lng: b.longitude });
+    const n = Math.max(1, Math.floor(seg / 80));
+    for (let k = 0; k < n; k++) {
+      pts.push({
+        lat: a.latitude + ((b.latitude - a.latitude) * k) / n,
+        lng: a.longitude + ((b.longitude - a.longitude) * k) / n,
+      });
+    }
+  }
+  if (pts.length < 8) return 0;
+  let overlap = 0;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 4; j < pts.length; j++) {
+      if (hav(pts[i], pts[j]) < 35) {
+        overlap += 1;
+        break;
+      }
+    }
+  }
+  return overlap / pts.length;
+}
+
 const failures = [];
 for (const round of ['clean', 'poisoned']) {
   console.log(`\n=== ${round} ===`);
@@ -58,9 +86,10 @@ for (const round of ['clean', 'poisoned']) {
         try {
           const res = await buildRoute(city.defaultStart, { distanceKm: km, shape, vibe: {} }, city);
           const err = Math.abs(res.distanceMeters / (km * 1000) - 1);
+          const ov = shape === 'loop' ? `, overlap ${(overlapOf(res.route.coordinates) * 100).toFixed(0)}%` : '';
           console.log(
             `${city.id.padEnd(8)} ${shape.padEnd(6)} ${km}km -> ${(res.distanceMeters / 1000).toFixed(1)}km, ` +
-            `${res.highlights.length} stops, off-target ${(err * 100).toFixed(0)}%`
+            `${res.highlights.length} stops, off-target ${(err * 100).toFixed(0)}%${ov}`
           );
         } catch (e) {
           failures.push(`[${round}] ${city.id} ${shape} ${km}km: ${e.message}`);

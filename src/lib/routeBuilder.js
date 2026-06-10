@@ -394,6 +394,46 @@ function capCoords(coords) {
   return coords;
 }
 
+// Force loops to actually circle. With one destination (or all waypoints off
+// in one direction) Mapbox retraces the same shortest path out and back; vias
+// placed perpendicular to the axis push the out and return legs onto
+// different streets — a lens for single stops, an outward bulge otherwise.
+function circularize(start, coords) {
+  if (coords.length < 3) return coords;
+  const pts = coords.slice(1, -1);
+  const offFor = (d) => Math.min(900, Math.max(150, d * 0.33));
+
+  if (pts.length === 1) {
+    const p = pts[0];
+    const mid = { lat: (start.lat + p.lat) / 2, lng: (start.lng + p.lng) / 2 };
+    const perp = bearing(start, p) + 90;
+    const off = offFor(haversine(start, p));
+    return [start, destinationPoint(mid, perp, off), p, destinationPoint(mid, perp - 180, off), start];
+  }
+
+  // angular spread of the waypoints as seen from the start
+  const bs = pts.map((p) => bearing(start, p));
+  let spread = 0;
+  for (let i = 0; i < bs.length; i++) {
+    for (let j = i + 1; j < bs.length; j++) spread = Math.max(spread, angularDiff(bs[i], bs[j]));
+  }
+  if (spread >= 100) return coords; // already sweeps around the start
+
+  // bulge the return leg to the side away from the rest of the route
+  const lastP = pts[pts.length - 1];
+  const mid = { lat: (start.lat + lastP.lat) / 2, lng: (start.lng + lastP.lng) / 2 };
+  const axis = bearing(start, lastP);
+  const off = offFor(haversine(start, lastP));
+  const cen = {
+    lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length,
+    lng: pts.reduce((s, p) => s + p.lng, 0) / pts.length,
+  };
+  const sideA = destinationPoint(mid, axis + 90, off);
+  const sideB = destinationPoint(mid, axis - 90, off);
+  const via = haversine(sideA, cen) >= haversine(sideB, cen) ? sideA : sideB;
+  return [...coords.slice(0, -1), via, start];
+}
+
 function coordSequence(start, waypoints, shape) {
   const coords = [start];
   let prev = start;
@@ -410,7 +450,10 @@ function coordSequence(start, waypoints, shape) {
       prev = c;
     }
   }
-  if (shape === 'loop') coords.push(start);
+  if (shape === 'loop') {
+    coords.push(start);
+    return capCoords(circularize(start, coords));
+  }
   return capCoords(coords);
 }
 
