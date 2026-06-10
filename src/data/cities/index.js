@@ -2,6 +2,7 @@
 // { id, name, emoji, center, bbox, primaryZone, defaultStart, presets, places }.
 import { NYC } from './nyc';
 import { SF } from './sf';
+import { PENINSULA } from './peninsula';
 import { BOSTON } from './boston';
 import { CHICAGO } from './chicago';
 import { AUSTIN } from './austin';
@@ -10,7 +11,7 @@ import { LONDON } from './london';
 import { PARIS } from './paris';
 import { TOKYO } from './tokyo';
 
-export const CITIES = [NYC, SF, BOSTON, CHICAGO, AUSTIN, MIAMI, LONDON, PARIS, TOKYO];
+export const CITIES = [NYC, SF, PENINSULA, BOSTON, CHICAGO, AUSTIN, MIAMI, LONDON, PARIS, TOKYO];
 
 // Which city a coordinate falls in (bbox hit, else nearest center). Lets us pick the
 // right dataset from "my location" or a dropped pin.
