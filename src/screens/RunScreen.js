@@ -1,17 +1,29 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useTheme, themedStyles, fmt } from '../theme';
 import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
 import { ambientInterval } from '../lib/settings';
+import { persistPhoto } from '../lib/history';
 import { dist, formatClock, formatPace, turnsFromGeometry, speak, stopSpeaking, maneuverIcon } from '../lib/nav';
-import { success } from '../lib/haptics';
+import { success, tap } from '../lib/haptics';
 
-export default function RunScreen({ result, settings, onExit }) {
+export default function RunScreen({ result, settings, onExit, onSave }) {
   useKeepAwake();
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -52,6 +64,10 @@ export default function RunScreen({ result, settings, onExit }) {
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
   const [splits, setSplits] = useState([]);
+  const [photos, setPhotos] = useState([]);
+  const [rating, setRating] = useState(0);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const voice = settings?.voice !== false;
   const calloutTimer = useRef(null);
@@ -74,6 +90,69 @@ export default function RunScreen({ result, settings, onExit }) {
       { voice, priority: true }
     );
   }, [eng, unit, voice]);
+
+  // Snap a sight: photos are pinned to your position and tagged with the
+  // nearest route highlight, which the route builder will favor from now on.
+  const takePhoto = useCallback(async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Camera needed', 'Allow camera access to capture sights along your run.');
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+      if (res.canceled || !res.assets?.length) return;
+      const uri = await persistPhoto(res.assets[0].uri);
+      const cur = eng.prev;
+      const near = cur ? nearestHighlight(cur, highlights) : null;
+      setPhotos((p) => [
+        ...p,
+        {
+          uri,
+          lat: cur ? cur.latitude : null,
+          lng: cur ? cur.longitude : null,
+          placeId: near ? near.id : null,
+          placeName: near ? near.name : null,
+          ts: Date.now(),
+        },
+      ]);
+      success();
+      if (near) {
+        showCallout(near.name, 'Photo saved — spots you shoot rank higher in future routes.');
+      }
+    } catch (e) {
+      Alert.alert('Could not take photo', e.message);
+    }
+  }, [eng, highlights, showCallout]);
+
+  const saveRun = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    const stride = Math.max(1, Math.ceil(routeCoords.length / 100));
+    const coords = routeCoords
+      .filter((_, i) => i % stride === 0 || i === routeCoords.length - 1)
+      .map((c) => ({ latitude: c.latitude, longitude: c.longitude }));
+    try {
+      await onSave({
+        id: String(Date.now()),
+        ts: Date.now(),
+        cityId: city.id,
+        cityName: city.name,
+        unit,
+        distM: eng.distM,
+        elapsed: Math.round(elapsed),
+        splits,
+        rating,
+        note: note.trim(),
+        photos,
+        highlights: highlights.map((h) => ({ id: h.id, name: h.name })),
+        seen: [...eng.announcedH],
+        coords,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, routeCoords, onSave, city, unit, eng, elapsed, splits, rating, note, photos, highlights]);
 
   // Ending a run throws away its stats — never do it on a stray tap.
   const confirmExit = useCallback(() => {
@@ -250,6 +329,15 @@ export default function RunScreen({ result, settings, onExit }) {
             <Text style={styles.pinText}>🏁</Text>
           </View>
         </Marker>
+        {photos
+          .filter((p) => p.lat != null)
+          .map((p) => (
+            <Marker key={p.ts} coordinate={{ latitude: p.lat, longitude: p.lng }} title={p.placeName || 'Photo'}>
+              <View style={[styles.pin, { backgroundColor: theme.accentDeep }]}>
+                <Text style={styles.pinText}>📷</Text>
+              </View>
+            </Marker>
+          ))}
       </MapView>
 
       {/* Direction banner */}
@@ -278,6 +366,15 @@ export default function RunScreen({ result, settings, onExit }) {
         </Glass>
       )}
 
+      {/* Camera */}
+      {!done && (
+        <TouchableOpacity style={styles.cameraWrap} onPress={takePhoto}>
+          <Glass style={styles.cameraBtn} isInteractive>
+            <Text style={styles.cameraIcon}>📷</Text>
+          </Glass>
+        </TouchableOpacity>
+      )}
+
       {/* Bottom stats */}
       {!done ? (
         <Glass style={styles.panel}>
@@ -288,6 +385,7 @@ export default function RunScreen({ result, settings, onExit }) {
           </View>
           <Text style={styles.avg}>
             avg {formatPace(avgPace)} /{unit} · {splits.length} {splits.length === 1 ? 'split' : 'splits'} done
+            {photos.length > 0 ? ` · ${photos.length} 📷` : ''}
           </Text>
           <View style={styles.controls}>
             <TouchableOpacity style={styles.secondary} onPress={togglePause}>
@@ -299,21 +397,78 @@ export default function RunScreen({ result, settings, onExit }) {
           </View>
         </Glass>
       ) : (
-        <Glass style={styles.panel}>
-          <Text style={styles.doneTitle}>Run complete</Text>
-          <View style={styles.statsRow}>
-            <Stat value={formatClock(elapsed)} label="time" />
-            <Stat value={fmt.km(distM, unit)} label="distance" />
-            <Stat value={formatPace(avgPace)} label={`avg /${unit}`} />
-            <Stat value={String(eng.announcedH.size)} label="seen" />
-          </View>
-          <TouchableOpacity style={styles.stop} onPress={onExit}>
-            <Text style={styles.stopText}>Done</Text>
-          </TouchableOpacity>
-        </Glass>
+        <KeyboardAvoidingView
+          style={styles.panelWrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
+        >
+          <Glass style={styles.panelCard}>
+            <Text style={styles.doneTitle}>Run complete</Text>
+            <View style={styles.statsRow}>
+              <Stat value={formatClock(elapsed)} label="time" />
+              <Stat value={fmt.km(distM, unit)} label="distance" />
+              <Stat value={formatPace(avgPace)} label={`avg /${unit}`} />
+              <Stat value={String(eng.announcedH.size)} label="seen" />
+            </View>
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  onPress={() => {
+                    tap();
+                    setRating(n);
+                  }}
+                >
+                  <Text style={[styles.star, n <= rating && styles.starActive]}>★</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={styles.noteInput}
+              placeholder="Add a note about this run…"
+              placeholderTextColor={theme.textDim}
+              value={note}
+              onChangeText={setNote}
+              returnKeyType="done"
+            />
+            {photos.length > 0 && (
+              <Text style={styles.photoNote}>
+                {photos.length} photo{photos.length === 1 ? '' : 's'} attached — those spots will rank
+                higher in future routes.
+              </Text>
+            )}
+            <View style={styles.controls}>
+              <TouchableOpacity style={styles.secondary} onPress={onExit} disabled={saving}>
+                <Text style={styles.secondaryText}>Discard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.stop} onPress={saveRun} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={theme.onAccent} />
+                ) : (
+                  <Text style={styles.stopText}>Save run</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Glass>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
+}
+
+// nearest route highlight to a point, within 150m — used to tag photos
+function nearestHighlight(cur, highlights) {
+  let best = null;
+  let bd = 150;
+  for (const h of highlights) {
+    const hp = h.corridor ? nearestCorridorPt(cur, h) : { latitude: h.lat, longitude: h.lng };
+    const d = dist(cur, hp);
+    if (d < bd) {
+      bd = d;
+      best = h;
+    }
+  }
+  return best;
 }
 
 function Stat({ value, label, big }) {
@@ -396,7 +551,7 @@ const getStyles = themedStyles((theme) => ({
   callout: {
     position: 'absolute',
     left: 16,
-    right: 16,
+    right: 84, // leave room for the camera button
     bottom: 210,
     borderRadius: 14,
     padding: 14,
@@ -404,6 +559,16 @@ const getStyles = themedStyles((theme) => ({
   },
   calloutName: { color: theme.accent, fontWeight: '700', fontSize: 15 },
   calloutText: { color: theme.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
+  cameraWrap: { position: 'absolute', right: 16, bottom: 230 },
+  cameraBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cameraIcon: { fontSize: 24 },
   panel: {
     position: 'absolute',
     left: 0,
@@ -416,6 +581,28 @@ const getStyles = themedStyles((theme) => ({
     paddingBottom: 34,
     overflow: 'hidden',
   },
+  panelWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  panelCard: {
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 34,
+    overflow: 'hidden',
+  },
+  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 14 },
+  star: { fontSize: 30, color: theme.border },
+  starActive: { color: theme.accent },
+  noteInput: {
+    backgroundColor: theme.cardAlt,
+    color: theme.text,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    marginTop: 12,
+  },
+  photoNote: { color: theme.textDim, fontSize: 12, textAlign: 'center', marginTop: 10 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   stat: { alignItems: 'center', flex: 1 },
   statValue: { color: theme.text, fontSize: 20, fontWeight: '800' },

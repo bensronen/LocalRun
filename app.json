@@ -9,7 +9,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "LocalRun uses your location to start a scenic running route from where you are."
+        "NSLocationWhenInUseUsageDescription": "LocalRun uses your location to start a scenic running route from where you are.",
+        "NSCameraUsageDescription": "LocalRun uses the camera to capture sights along your run."
       }
     },
     "plugins": [
@@ -17,6 +18,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "LocalRun uses your location to start a scenic running route from where you are."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "LocalRun uses the camera to capture sights along your run."
         }
       ]
     ],

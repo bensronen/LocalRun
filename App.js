@@ -5,8 +5,10 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import PlanScreen from './src/screens/PlanScreen';
 import RouteScreen from './src/screens/RouteScreen';
 import RunScreen from './src/screens/RunScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsModal from './src/components/SettingsModal';
 import { buildRoute } from './src/lib/routeBuilder';
+import { saveRun, boostsFromRun } from './src/lib/history';
 import {
   loadSettings,
   saveSettings,
@@ -25,6 +27,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draft, setDraft] = useState(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const draftSaveTimer = useRef(null);
 
@@ -80,9 +83,27 @@ export default function App() {
     setRunning(true);
   }, []);
 
+  // Save a finished run: write history, feed photos/rating back into the
+  // place-boost model, then return home.
+  const handleSaveRun = useCallback(async (record) => {
+    await saveRun(record);
+    await boostsFromRun(record);
+    setRunning(false);
+    setResult(null);
+  }, []);
+
   let screen = null;
   if (running && result) {
-    screen = <RunScreen result={result} settings={settings} onExit={() => setRunning(false)} />;
+    screen = (
+      <RunScreen
+        result={result}
+        settings={settings}
+        onExit={() => setRunning(false)}
+        onSave={handleSaveRun}
+      />
+    );
+  } else if (historyOpen) {
+    screen = <HistoryScreen onBack={() => setHistoryOpen(false)} />;
   } else if (result) {
     screen = (
       <RouteScreen
@@ -100,6 +121,7 @@ export default function App() {
         onDraftChange={updateDraft}
         onRouteBuilt={handleRouteBuilt}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
       />
     );
   }

@@ -18,6 +18,7 @@ import { useTheme, themedStyles, fmt, shadow } from '../theme';
 import Glass from '../components/Glass';
 import { geocode, geocodeSuggest, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
+import { loadBoosts } from '../lib/history';
 import { tap } from '../lib/haptics';
 import { CITIES, cityForPoint } from '../data/cities';
 
@@ -28,7 +29,7 @@ const VIBES = [
   { key: 'neighborhoods', label: 'Neighborhoods' },
 ];
 
-export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings }) {
+export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenSettings, onOpenHistory }) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const initCity = (draft && CITIES.find((c) => c.id === draft.cityId)) || CITIES[0];
@@ -162,6 +163,8 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
         shape,
         vibe: vibeFromChips(vibes),
         profile: 'walking',
+        // places you've photographed or rated well rank higher
+        boosts: await loadBoosts(),
       };
       const result = await buildRoute(start, plan, city);
       onRouteBuilt({ ...result, start, unit, plan, city });
@@ -183,9 +186,14 @@ export default function PlanScreen({ draft, onDraftChange, onRouteBuilt, onOpenS
           <Text style={styles.title}>LocalRun</Text>
           <Text style={styles.subtitle}>Run a city like a local.</Text>
         </View>
-        <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
-          <Text style={styles.gearIcon}>⚙︎</Text>
-        </TouchableOpacity>
+        <View style={styles.headerBtns}>
+          <TouchableOpacity style={styles.gear} onPress={onOpenHistory}>
+            <Text style={styles.gearIcon}>🕘</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
+            <Text style={styles.gearIcon}>⚙︎</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* City selector */}
@@ -402,6 +410,7 @@ const getStyles = themedStyles((theme) => ({
   },
   title: { color: theme.text, fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { color: theme.textDim, fontSize: 15, marginTop: 2, marginBottom: 16 },
+  headerBtns: { flexDirection: 'row', gap: 8 },
   gear: {
     width: 40,
     height: 40,

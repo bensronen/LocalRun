@@ -38,13 +38,15 @@ function scenicLength(place) {
 }
 
 function valueOf(place, vibe, jitter = 0) {
-  const base = place.score || 3;
+  const base = (place.score || 3) * (place._boost || 1);
   const w = (vibe && vibe[place.category]) ?? 1;
   const noise = jitter ? 1 + (Math.random() - 0.5) * jitter : 1;
   return base * w * noise;
 }
 
-function annotate(start, places, city) {
+// boosts: { placeId: count } learned from the runner's photos and ratings —
+// capped so a favorite spot tilts routes toward it without taking them over.
+function annotate(start, places, city, boosts) {
   return places.map((p) => ({
     ...p,
     // distance to the NEAREST point you'd reach the feature at (a corridor that runs
@@ -54,6 +56,7 @@ function annotate(start, places, city) {
       : haversine(start, ll(p)),
     _b: bearing(start, ll(p)),
     _zone: p.zone || city.primaryZone,
+    _boost: boosts && boosts[p.id] ? 1 + Math.min(boosts[p.id], 5) * 0.12 : 1,
   }));
 }
 
@@ -578,11 +581,11 @@ async function addOnewayDetour(start, waypoints, target, profile) {
 // until within 5% of target.
 export async function buildRoute(
   start,
-  { distanceKm, shape, vibe, profile = 'walking', jitter = 0 },
+  { distanceKm, shape, vibe, profile = 'walking', jitter = 0, boosts },
   city
 ) {
   const targetMeters = distanceKm * 1000;
-  const annotated = annotate(start, city.places, city);
+  const annotated = annotate(start, city.places, city, boosts);
   const startZone = zoneForStart(start, annotated, city);
 
   let waypoints;
