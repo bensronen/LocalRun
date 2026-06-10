@@ -2,12 +2,13 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { theme, shadow } from '../theme';
 import { TALK_LEVELS } from '../lib/settings';
+import Glass from './Glass';
 
 export default function SettingsModal({ visible, settings, onChange, onClose }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <Glass style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>Settings</Text>
 
@@ -47,7 +48,7 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
           <TouchableOpacity style={styles.done} onPress={onClose}>
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
-        </View>
+        </Glass>
       </View>
     </Modal>
   );
@@ -56,11 +57,11 @@ export default function SettingsModal({ visible, settings, onChange, onClose }) 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(20, 38, 27, 0.4)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: theme.card,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     padding: 22,
     paddingBottom: 36,
+    overflow: 'hidden',
   },
   handle: {
     width: 44,

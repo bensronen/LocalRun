@@ -14,6 +14,7 @@ import Slider from '@react-native-community/slider';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { theme, fmt, shadow } from '../theme';
+import Glass from '../components/Glass';
 import { geocode, hasToken } from '../lib/mapbox';
 import { buildRoute, vibeFromChips } from '../lib/routeBuilder';
 import { CITIES, cityForPoint } from '../data/cities';
@@ -137,7 +138,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
       </TouchableOpacity>
       <Modal visible={cityOpen} transparent animationType="fade" onRequestClose={() => setCityOpen(false)}>
         <TouchableOpacity style={styles.cityBackdrop} activeOpacity={1} onPress={() => setCityOpen(false)}>
-          <View style={styles.cityMenu}>
+          <Glass style={styles.cityMenu}>
             <ScrollView bounces={false}>
               {CITIES.map((c) => (
                 <TouchableOpacity
@@ -155,7 +156,7 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </Glass>
         </TouchableOpacity>
       </Modal>
 
@@ -219,9 +220,9 @@ export default function PlanScreen({ onRouteBuilt, onOpenSettings }) {
             }}
           />
         </MapView>
-        <View style={styles.mapHint}>
+        <Glass style={styles.mapHint}>
           <Text style={styles.mapHintText}>{start.name} · tap to move</Text>
-        </View>
+        </Glass>
       </View>
 
       {/* Distance */}
@@ -349,14 +350,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   cityMenu: {
-    backgroundColor: theme.card,
     borderRadius: 16,
     maxHeight: 420,
     overflow: 'hidden',
-    ...shadow,
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 8,
   },
   cityItem: {
     flexDirection: 'row',
@@ -412,12 +408,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     bottom: 10,
-    backgroundColor: theme.overlay,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    overflow: 'hidden',
   },
-  mapHintText: { color: theme.onOverlay, fontSize: 12, fontWeight: '600' },
+  mapHintText: { color: theme.text, fontSize: 12, fontWeight: '600' },
   distHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   unitToggle: {
     flexDirection: 'row',

@@ -14,10 +14,6 @@ export const theme = {
   border: 'rgba(29, 53, 39, 0.12)',
   tint: 'rgba(44, 94, 64, 0.12)', // accent wash for tinted buttons & segmented tracks
   danger: '#b9543f',
-  // dark translucent surfaces floating over the map
-  overlay: 'rgba(20, 38, 27, 0.88)',
-  onOverlay: '#f3eee0',
-  accentSoft: '#a9d4b8', // accent legible on `overlay`
   onAccent: '#f7f1e3', // text on accent/good buttons
 };
 

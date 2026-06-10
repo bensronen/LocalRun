@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import { theme, fmt, shadow } from '../theme';
+import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 
 export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }) {
@@ -54,8 +55,10 @@ export default function RouteScreen({ result, onBack, onRegenerate, onStartRun }
             </Marker>
           ))}
         </MapView>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>‹ Plan</Text>
+        <TouchableOpacity style={styles.backWrap} onPress={onBack}>
+          <Glass style={styles.backBtn} isInteractive>
+            <Text style={styles.backText}>‹ Plan</Text>
+          </Glass>
         </TouchableOpacity>
       </View>
 
@@ -169,16 +172,14 @@ function DetailLine({ icon, text, dim }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   mapWrap: { height: '42%' },
+  backWrap: { position: 'absolute', top: 50, left: 14 },
   backBtn: {
-    position: 'absolute',
-    top: 50,
-    left: 14,
-    backgroundColor: theme.overlay,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    overflow: 'hidden',
   },
-  backText: { color: theme.onOverlay, fontWeight: '700', fontSize: 15 },
+  backText: { color: theme.text, fontWeight: '600', fontSize: 15 },
   pin: {
     width: 28,
     height: 28,

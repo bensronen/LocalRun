@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import { theme, fmt, shadow } from '../theme';
+import { theme, fmt } from '../theme';
+import Glass from '../components/Glass';
 import { CATEGORY_META } from '../data/categories';
 import { getManeuvers } from '../lib/mapbox';
 import { ambientInterval } from '../lib/settings';
@@ -236,7 +237,7 @@ export default function RunScreen({ result, settings, onExit }) {
 
       {/* Direction banner */}
       {banner && !done && (
-        <View style={styles.banner}>
+        <Glass style={styles.banner}>
           <Text style={styles.bannerIcon}>{banner.icon}</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerInstr} numberOfLines={2}>
@@ -244,23 +245,25 @@ export default function RunScreen({ result, settings, onExit }) {
             </Text>
             <Text style={styles.bannerMeters}>{banner.meters} m</Text>
           </View>
-        </View>
+        </Glass>
       )}
-      <TouchableOpacity style={styles.exitBtn} onPress={onExit}>
-        <Text style={styles.exitText}>✕</Text>
+      <TouchableOpacity style={styles.exitWrap} onPress={onExit}>
+        <Glass style={styles.exitBtn} isInteractive>
+          <Text style={styles.exitText}>✕</Text>
+        </Glass>
       </TouchableOpacity>
 
       {/* Place call-out */}
       {callout && !done && (
-        <View style={styles.callout}>
-          <Text style={styles.calloutName}>📍 {callout.name}</Text>
+        <Glass style={styles.callout}>
+          <Text style={styles.calloutName}>{callout.name}</Text>
           <Text style={styles.calloutText}>{callout.text}</Text>
-        </View>
+        </Glass>
       )}
 
       {/* Bottom stats */}
       {!done ? (
-        <View style={styles.panel}>
+        <Glass style={styles.panel}>
           <View style={styles.statsRow}>
             <Stat big value={formatClock(elapsed)} label="time" />
             <Stat big value={fmt.km(distM, unit)} label="distance" />
@@ -277,9 +280,9 @@ export default function RunScreen({ result, settings, onExit }) {
               <Text style={styles.stopText}>Finish</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Glass>
       ) : (
-        <View style={styles.panel}>
+        <Glass style={styles.panel}>
           <Text style={styles.doneTitle}>Run complete</Text>
           <View style={styles.statsRow}>
             <Stat value={formatClock(elapsed)} label="time" />
@@ -290,7 +293,7 @@ export default function RunScreen({ result, settings, onExit }) {
           <TouchableOpacity style={styles.stop} onPress={onExit}>
             <Text style={styles.stopText}>Done</Text>
           </TouchableOpacity>
-        </View>
+        </Glass>
       )}
     </View>
   );
@@ -352,43 +355,34 @@ const styles = StyleSheet.create({
     top: 54,
     left: 16,
     right: 70,
-    backgroundColor: theme.overlay,
     borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
+    overflow: 'hidden',
   },
-  bannerIcon: { color: theme.accentSoft, fontSize: 34, fontWeight: '800' },
-  bannerInstr: { color: theme.onOverlay, fontSize: 17, fontWeight: '700' },
-  bannerMeters: { color: theme.accentSoft, fontSize: 13, fontWeight: '700', marginTop: 2 },
+  bannerIcon: { color: theme.accent, fontSize: 34, fontWeight: '800' },
+  bannerInstr: { color: theme.text, fontSize: 17, fontWeight: '700' },
+  bannerMeters: { color: theme.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
+  exitWrap: { position: 'absolute', top: 54, right: 16 },
   exitBtn: {
-    position: 'absolute',
-    top: 54,
-    right: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.overlay,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
+    overflow: 'hidden',
   },
-  exitText: { color: theme.onOverlay, fontSize: 18, fontWeight: '700' },
+  exitText: { color: theme.text, fontSize: 18, fontWeight: '600' },
   callout: {
     position: 'absolute',
     left: 16,
     right: 16,
     bottom: 210,
-    backgroundColor: theme.card,
     borderRadius: 14,
     padding: 14,
-    ...shadow,
-    shadowOpacity: 0.15,
-    elevation: 4,
+    overflow: 'hidden',
   },
   calloutName: { color: theme.accent, fontWeight: '700', fontSize: 15 },
   calloutText: { color: theme.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
@@ -397,16 +391,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: theme.card,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 34,
-    ...shadow,
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    elevation: 10,
+    overflow: 'hidden',
   },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   stat: { alignItems: 'center', flex: 1 },
