@@ -125,6 +125,33 @@ function handleCommunity(cityId, res) {
   });
 }
 
+// ---- Strava token exchange (keeps the client secret off the phone) ----
+// Set STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET in the environment.
+
+async function handleStrava(kind, body, res) {
+  const id = process.env.STRAVA_CLIENT_ID;
+  const secret = process.env.STRAVA_CLIENT_SECRET;
+  if (!id || !secret) return json(res, 501, { error: 'Strava not configured on this server' });
+  const params = new URLSearchParams({ client_id: id, client_secret: secret });
+  if (kind === 'exchange') {
+    if (!body?.code) return json(res, 400, { error: 'code required' });
+    params.set('code', body.code);
+    params.set('grant_type', 'authorization_code');
+  } else {
+    if (!body?.refresh_token) return json(res, 400, { error: 'refresh_token required' });
+    params.set('refresh_token', body.refresh_token);
+    params.set('grant_type', 'refresh_token');
+  }
+  try {
+    const resp = await fetch('https://www.strava.com/oauth/token', { method: 'POST', body: params });
+    const data = await resp.json();
+    if (!resp.ok) return json(res, 502, { error: 'strava rejected the request' });
+    json(res, 200, data);
+  } catch {
+    json(res, 502, { error: 'could not reach strava' });
+  }
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'OPTIONS') return json(res, 204, {});
@@ -133,7 +160,8 @@ const server = http.createServer((req, res) => {
   }
   const community = url.pathname.match(/^\/api\/community\/([\w-]+)$/);
   if (req.method === 'GET' && community) return handleCommunity(community[1], res);
-  if (req.method === 'POST' && url.pathname === '/api/runs') {
+  const strava = url.pathname.match(/^\/api\/strava\/(exchange|refresh)$/);
+  if (req.method === 'POST' && (url.pathname === '/api/runs' || strava)) {
     let body = '';
     req.on('data', (c) => {
       body += c;
@@ -141,7 +169,9 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       try {
-        handleSubmitRun(JSON.parse(body), res);
+        const parsed = JSON.parse(body);
+        if (strava) handleStrava(strava[1], parsed, res);
+        else handleSubmitRun(parsed, res);
       } catch {
         json(res, 400, { error: 'invalid JSON' });
       }
