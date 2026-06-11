@@ -14,6 +14,12 @@ final class StravaService: NSObject, ObservableObject {
 
     private var session: ASWebAuthenticationSession?
 
+    // Stored-property-only init, safe to run from the nonisolated static
+    // `shared` initializer (silences the main-actor isolation warning).
+    nonisolated override init() {
+        super.init()
+    }
+
     enum StravaError: LocalizedError {
         case notConfigured, authFailed, uploadFailed(String)
         var errorDescription: String? {
