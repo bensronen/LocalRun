@@ -19,6 +19,7 @@ struct ContentView: View {
                 Group {
                     switch app.tab {
                     case .plan: PlanView()
+                    case .feed: FeedView()
                     case .history: HistoryView()
                     }
                 }
@@ -42,6 +43,7 @@ struct TabBarView: View {
     var body: some View {
         HStack(spacing: 4) {
             tabItem(.plan, label: "Plan", symbol: "map.fill")
+            tabItem(.feed, label: "Feed", symbol: "person.2.fill")
             tabItem(.history, label: "Runs", symbol: "figure.run")
         }
         .padding(.horizontal, 8)

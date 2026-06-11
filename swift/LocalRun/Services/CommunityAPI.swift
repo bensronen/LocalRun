@@ -39,17 +39,18 @@ enum CommunityAPI {
         var req = URLRequest(url: url, timeoutInterval: 5)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        AuthService.authorize(&req) // signed-in runs carry your username to the feed
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         _ = try? await URLSession.shared.data(for: req)
     }
 
-    static func fetchCommunity(_ cityId: String) async -> CommunitySnapshot? {
+    static func fetchCommunity(_ cityId: String, force: Bool = false) async -> CommunitySnapshot? {
         var cached: Cached?
         if let data = try? Data(contentsOf: cacheURL(cityId)) {
             cached = try? JSONDecoder().decode(Cached.self, from: data)
         }
         guard Config.hasAPI else { return cached?.data }
-        if let c = cached, Date().timeIntervalSince1970 - c.ts < cacheTTL { return c.data }
+        if !force, let c = cached, Date().timeIntervalSince1970 - c.ts < cacheTTL { return c.data }
         guard let url = URL(string: "\(Config.apiURL)/api/community/\(cityId)") else { return cached?.data }
         do {
             var req = URLRequest(url: url, timeoutInterval: 5)

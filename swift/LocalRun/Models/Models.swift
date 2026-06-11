@@ -259,6 +259,7 @@ struct CommunitySnapshot: Codable {
     var totalRuns: Int
     var places: [String: PlaceStats]
     var top: [TopPlace]
+    var recent: [FeedEntry]?
 
     struct PlaceStats: Codable {
         var photos: Int
@@ -267,4 +268,16 @@ struct CommunitySnapshot: Codable {
         var boost: Double
     }
     struct TopPlace: Codable { var id: String; var photos: Int }
+
+    struct FeedEntry: Codable, Identifiable {
+        var id: Double { ts }
+        var cityId: String
+        var username: String?
+        var distM: Double
+        var elapsed: Double
+        var photos: Int
+        var photoPlaceIds: [String]?
+        var rating: Int
+        var ts: Double
+    }
 }

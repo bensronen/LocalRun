@@ -26,7 +26,7 @@ final class AppState: ObservableObject {
     @Published var regenerating = false
     @Published var settingsOpen = false
 
-    enum Tab { case plan, history }
+    enum Tab { case plan, feed, history }
 
     var theme: Theme { Theme(dark: settings.dark) }
 

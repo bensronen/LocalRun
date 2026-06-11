@@ -35,7 +35,16 @@ after 7 days — fine for the trip; re-run from Xcode to refresh.
    Photos: stored on device; no tracking).
 4. TestFlight first; submit for review when happy.
 
-## 4. Community server
+## 4. Accounts & the social feed
+
+With `apiURL` set (see §5), the app gains a **Feed tab** (recent community
+runs with usernames, most-photographed sights, your profile) and accounts:
+Settings → Account → Sign in / Create account (username, email, password —
+scrypt-hashed server side). Signed-in runs carry your username to the feed;
+everything else works signed-out. **App Store note:** in-app account deletion
+is required by review and is built in (Settings → Delete account…).
+
+## 5. Community server
 
 Deploy `server/index.mjs` anywhere Node 18+ runs (Railway/Render/Fly free tiers):
 no build step, no database. Set `DATA_FILE` to a persistent path. Put its URL in
