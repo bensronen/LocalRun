@@ -362,7 +362,11 @@ function dedupeSets(sets) {
 // than a point you pass, so points go first.
 function trimOne(waypoints, shape) {
   if (waypoints.length <= 1) return waypoints;
-  const removable = shape === 'oneway' ? waypoints.slice(0, -1) : waypoints;
+  // the user's explicit destination is never trimmed
+  const removable = (shape === 'oneway' ? waypoints.slice(0, -1) : waypoints).filter(
+    (p) => p.id !== 'user-destination'
+  );
+  if (!removable.length) return waypoints;
   const keepValue = (p) => (p.score || 3) + (p.corridor ? 4 + scenicLength(p) / 1000 : 0);
   let worstIdx = 0;
   let worst = Infinity;
@@ -741,12 +745,42 @@ async function addOnewayDetour(start, waypoints, target, profile) {
 // until within 5% of target.
 export async function buildRoute(
   start,
-  { distanceKm, shape, vibe, profile = 'walking', jitter = 0, boosts, seen, explore },
+  { distanceKm, shape, vibe, profile = 'walking', jitter = 0, boosts, seen, explore, dest },
   city
 ) {
   const targetMeters = distanceKm * 1000;
   const annotated = annotate(start, city.places, city, { boosts, seen, explore });
   const startZone = zoneForStart(start, annotated, city);
+
+  // A destination the user explicitly asked to hit becomes a high-value,
+  // untrimmable waypoint: loops thread through it, one-ways finish there.
+  let mandatory = null;
+  if (dest) {
+    const destLL = { lat: dest.lat, lng: dest.lng };
+    let zone = city.primaryZone;
+    let zd = Infinity;
+    for (const p of annotated) {
+      const d = haversine(destLL, ll(p));
+      if (d < zd) {
+        zd = d;
+        zone = p._zone;
+      }
+    }
+    mandatory = {
+      id: 'user-destination',
+      name: dest.name || 'Your destination',
+      category: 'landmark',
+      lat: dest.lat,
+      lng: dest.lng,
+      score: 6,
+      blurb: 'The stop you asked for.',
+      endpoint: true,
+      _d: haversine(start, destLL),
+      _b: bearing(start, destLL),
+      _zone: zone,
+      _boost: 1,
+    };
+  }
 
   let waypoints;
   let route;
@@ -760,6 +794,13 @@ export async function buildRoute(
       selectLoopWaypoints(start, targetMeters, vibe, jitter, annotated, startZone),
       selectLoopWaypoints(start, targetMeters, vibe, 0.6, annotated, startZone),
     ]);
+    if (mandatory) {
+      // every candidate circuit must include the user's destination
+      sets = dedupeSets(
+        sets.map((s) => orderWaypoints([mandatory, ...s.filter((p) => p.id !== mandatory.id)], 'loop'))
+      );
+      if (!sets.length) sets = [[mandatory]];
+    }
     if (!sets.length) {
       // Standing on the only sight (or in an empty pocket): synthesize an
       // unnamed anchor toward the most scenic reachable direction so the
@@ -811,9 +852,10 @@ export async function buildRoute(
             valueOf(a, vibe, jitter) * (1 + scenicLength(a) / 1000)
         );
       for (const cand of ranked) {
+        const wp = mandatory ? orderWaypoints([mandatory, cand], 'loop') : [cand];
         try {
-          route = await routeFor(start, [cand], shape, profile);
-          waypoints = [cand];
+          route = await routeFor(start, wp, shape, profile);
+          waypoints = wp;
           break;
         } catch {
           // unroutable — try the next feature
@@ -822,7 +864,10 @@ export async function buildRoute(
       if (!route) throw new Error('Could not route to any scenic spot near there — try a different start.');
     }
   } else {
-    waypoints = await selectOneWayDest(start, targetMeters, vibe, jitter, annotated, startZone, profile);
+    // the asked-for destination IS the finish line of a one-way
+    waypoints = mandatory
+      ? [mandatory]
+      : await selectOneWayDest(start, targetMeters, vibe, jitter, annotated, startZone, profile);
     if (!waypoints.length) {
       throw new Error('No scenic waypoints found near there at this distance.');
     }
@@ -874,15 +919,15 @@ export async function buildRoute(
           valueOf(a, vibe, jitter) * (1 + scenicLength(a) / 1000)
       );
     for (const cand of ranked.slice(0, 8)) {
+      let wp = mandatory ? orderWaypoints([mandatory, cand], 'loop') : [cand];
       let r;
       try {
-        r = await routeFor(start, [cand], shape, profile);
+        r = await routeFor(start, wp, shape, profile);
       } catch {
         continue;
       }
-      let wp = [cand];
       if (cand.corridor && r.distanceMeters > hi) {
-        const fit = await fitLongCorridor(start, [cand], shape, targetMeters, profile, r);
+        const fit = await fitLongCorridor(start, wp, shape, targetMeters, profile, r);
         wp = fit.waypoints;
         r = fit.route;
       }

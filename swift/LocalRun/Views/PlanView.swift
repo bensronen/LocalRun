@@ -11,6 +11,11 @@ struct PlanView: View {
     @State private var address = ""
     @State private var suggestions: [StartPoint] = []
     @State private var suggestTask: Task<Void, Never>?
+    @State private var destination: StartPoint?
+    @State private var destAddress = ""
+    @State private var destSuggestions: [StartPoint] = []
+    @State private var destSuggestTask: Task<Void, Never>?
+    @State private var mapPickerOpen = false
     @State private var distanceKm: Double = 5
     @State private var unit: DistanceUnit = .km
     @State private var shape: RouteShape = .loop
@@ -47,6 +52,8 @@ struct PlanView: View {
                 suggestionList
                 presetRow
                 miniMap
+                SectionLabel(text: "Destination (optional)")
+                destSection
                 SectionLabel(text: "Distance")
                 distanceSection
                 SectionLabel(text: "Route shape")
@@ -75,7 +82,14 @@ struct PlanView: View {
         .onChange(of: shape) { _, _ in saveDraft() }
         .onChange(of: vibes) { _, _ in saveDraft() }
         .onChange(of: start) { _, _ in saveDraft() }
+        .onChange(of: destination) { _, _ in saveDraft() }
         .sheet(isPresented: $cityPickerOpen) { cityPicker }
+        .fullScreenCover(isPresented: $mapPickerOpen) {
+            MapPickerSheet(city: city, start: $start) {
+                clearAddress()
+            }
+            .environmentObject(app)
+        }
         .alert("Could not build a route", isPresented: .init(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
         )) {
@@ -236,33 +250,104 @@ struct PlanView: View {
     }
 
     private var miniMap: some View {
-        MapReader { proxy in
-            Map(position: $mapPosition) {
-                Annotation("", coordinate: start.ll.cl) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.white, app.theme.accent)
-                }
+        Map(position: $mapPosition) {
+            Annotation("", coordinate: start.ll.cl) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white, app.theme.accent)
             }
-            .onTapGesture { sp in
-                if let coord = proxy.convert(sp, from: .local) {
-                    start = StartPoint(lat: coord.latitude, lng: coord.longitude, name: "Dropped pin")
-                    clearAddress()
+            if let d = destination {
+                Annotation("", coordinate: d.ll.cl) {
+                    Image(systemName: "flag.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(.white, app.theme.accentDeep)
                 }
             }
         }
+        .allowsHitTesting(false) // preview only — tap opens the full-screen picker
         .frame(height: 200)
         .overlay(alignment: .bottomLeading) {
-            Text("\(start.name) · tap to move")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(app.theme.text)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .glassCapsule()
-                .padding(10)
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 10, weight: .bold))
+                Text("\(start.name) · tap to expand")
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(app.theme.text)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .glassCapsule()
+            .padding(10)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture {
+            Haptics.tap()
+            mapPickerOpen = true
+        }
         .padding(.top, 14)
+    }
+
+    @ViewBuilder
+    private var destSection: some View {
+        if let d = destination {
+            HStack(spacing: 10) {
+                Image(systemName: "flag.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.white, app.theme.accentDeep)
+                Text(d.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(app.theme.text)
+                    .lineLimit(1)
+                Spacer()
+                Button {
+                    Haptics.tap()
+                    destination = nil
+                    destAddress = ""
+                    destSuggestions = []
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(app.theme.textDim)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .card(radius: 12)
+        } else {
+            TextField("A place the route must hit…", text: $destAddress)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .card(radius: 12)
+                .onChange(of: destAddress) { _, text in scheduleDestSuggest(text) }
+            if !destSuggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(destSuggestions.enumerated()), id: \.offset) { i, s in
+                        Button {
+                            Haptics.tap()
+                            destination = s
+                            destAddress = ""
+                            destSuggestions = []
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        } label: {
+                            Text(s.name)
+                                .font(.system(size: 14))
+                                .foregroundStyle(app.theme.text)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                        }
+                        if i < destSuggestions.count - 1 { Divider() }
+                    }
+                }
+                .card(radius: 12)
+                .padding(.top, 6)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 
     private var distanceSection: some View {
@@ -401,6 +486,7 @@ struct PlanView: View {
         unit = d.unit
         shape = d.shape
         vibes = Set(d.vibes)
+        destination = d.dest
         recenterMap()
         Task { community = await CommunityAPI.fetchCommunity(city.id) }
     }
@@ -409,7 +495,7 @@ struct PlanView: View {
         guard hydrated else { return }
         app.updateDraft(PlanDraft(
             cityId: city.id, start: start, address: address, distanceKm: distanceKm,
-            unit: unit, shape: shape, vibes: Array(vibes)
+            unit: unit, shape: shape, vibes: Array(vibes), dest: destination
         ))
     }
 
@@ -438,6 +524,21 @@ struct PlanView: View {
             guard !Task.isCancelled else { return }
             let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
             if !Task.isCancelled { suggestions = hits }
+        }
+    }
+
+    private func scheduleDestSuggest(_ text: String) {
+        destSuggestTask?.cancel()
+        let q = text.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 3, Config.hasMapboxToken else {
+            destSuggestions = []
+            return
+        }
+        destSuggestTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
+            if !Task.isCancelled { destSuggestions = hits }
         }
     }
 
@@ -497,6 +598,7 @@ struct PlanView: View {
                              vibe: RouteBuilder.vibeFromChips(Array(vibes)))
         plan.boosts = boosts
         plan.seen = seen
+        plan.dest = destination
         if seen.count >= 3 {
             exploreAsk = ExploreAsk(seen: seen, plan: plan)
         } else {
@@ -527,6 +629,147 @@ struct PlanView: View {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Full-screen start picker, X-style: the map fills the screen and the
+/// "Start from" controls move into a bottom card. Tap the map to set the pin.
+struct MapPickerSheet: View {
+    @EnvironmentObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    let city: City
+    @Binding var start: StartPoint
+    var onChanged: () -> Void
+
+    @State private var camera: MapCameraPosition
+    @State private var address = ""
+    @State private var suggestions: [StartPoint] = []
+    @State private var suggestTask: Task<Void, Never>?
+
+    init(city: City, start: Binding<StartPoint>, onChanged: @escaping () -> Void) {
+        self.city = city
+        self._start = start
+        self.onChanged = onChanged
+        _camera = State(initialValue: .region(MKCoordinateRegion(
+            center: start.wrappedValue.ll.cl,
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )))
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            MapReader { proxy in
+                Map(position: $camera) {
+                    Annotation("", coordinate: start.ll.cl) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white, app.theme.accent)
+                    }
+                }
+                .onTapGesture { sp in
+                    if let c = proxy.convert(sp, from: .local) {
+                        Haptics.tap()
+                        start = StartPoint(lat: c.latitude, lng: c.longitude, name: "Dropped pin")
+                        onChanged()
+                    }
+                }
+                .ignoresSafeArea()
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Capsule().fill(app.theme.textDim.opacity(0.35)).frame(width: 40, height: 5)
+                    .frame(maxWidth: .infinity)
+                Text("START FROM")
+                    .font(.system(size: 12, weight: .semibold)).kerning(0.6)
+                    .foregroundStyle(app.theme.textDim)
+                TextField("Hotel or address in \(city.name)…", text: $address)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .background(app.theme.cardAlt.opacity(0.7),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .onChange(of: address) { _, text in schedule(text) }
+                if !suggestions.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(Array(suggestions.prefix(3).enumerated()), id: \.offset) { i, s in
+                            Button {
+                                pick(s)
+                            } label: {
+                                Text(s.name)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(app.theme.text)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 11)
+                            }
+                            if i < min(suggestions.count, 3) - 1 { Divider() }
+                        }
+                    }
+                    .background(app.theme.cardAlt.opacity(0.7),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                FlowRow {
+                    ForEach(city.presets, id: \.label) { p in
+                        Button {
+                            pick(p.start)
+                        } label: {
+                            Text(p.label)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(app.theme.text)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 7)
+                                .background(app.theme.cardAlt.opacity(0.7), in: Capsule())
+                        }
+                    }
+                }
+                Text(start.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(app.theme.accent)
+                    .lineLimit(1)
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(app.theme.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(app.theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+            .padding(16)
+            .padding(.bottom, 18)
+            .glass(in: UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+        }
+        .ignoresSafeArea(edges: .bottom)
+    }
+
+    private func pick(_ s: StartPoint) {
+        Haptics.tap()
+        start = s
+        address = ""
+        suggestions = []
+        onChanged()
+        camera = .region(MKCoordinateRegion(
+            center: s.ll.cl, span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        ))
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private func schedule(_ text: String) {
+        suggestTask?.cancel()
+        let q = text.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 3, Config.hasMapboxToken else {
+            suggestions = []
+            return
+        }
+        suggestTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
+            if !Task.isCancelled { suggestions = hits }
         }
     }
 }

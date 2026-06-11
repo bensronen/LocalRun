@@ -19,9 +19,10 @@ struct RunView: View {
         self.result = result
         // settings are read again in onAppear via env; seed engine with stored ones
         _engine = StateObject(wrappedValue: RunEngine(result: result, settings: Stores.loadSettings()))
-        _mapPosition = State(initialValue: .userLocation(followsHeading: false, fallback: .region(
+        // Apple Maps-style follow: close in, rotating with your heading
+        _mapPosition = State(initialValue: .userLocation(followsHeading: true, fallback: .region(
             MKCoordinateRegion(center: result.start.ll.cl,
-                               span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004))
+                               span: MKCoordinateSpan(latitudeDelta: 0.0025, longitudeDelta: 0.0025))
         )))
     }
 
@@ -121,23 +122,26 @@ struct RunView: View {
     private var topOverlays: some View {
         HStack(alignment: .top, spacing: 10) {
             if let b = engine.banner, !engine.done {
-                HStack(spacing: 12) {
+                // Apple Maps-style: huge arrow, big distance, street below
+                HStack(spacing: 14) {
                     Image(systemName: b.symbol)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(app.theme.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(b.instruction)
-                            .font(.system(size: 16, weight: .bold))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(bannerDistance(b.meters))
+                            .font(.system(size: 26, weight: .bold))
                             .foregroundStyle(app.theme.text)
+                            .contentTransition(.numericText())
+                        Text(b.instruction)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(app.theme.textDim)
                             .lineLimit(2)
-                        Text("\(b.meters) m")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(app.theme.accent)
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(14)
-                .glass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .glass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             } else {
                 Spacer()
             }
@@ -211,26 +215,50 @@ struct RunView: View {
             Text(avgLine)
                 .font(.system(size: 13)).foregroundStyle(app.theme.textDim)
                 .padding(.top, 10)
-            HStack(spacing: 12) {
-                Button {
-                    engine.togglePause()
-                } label: {
-                    Text(engine.paused ? "Resume" : "Pause")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(app.theme.accent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(app.theme.tint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                Button {
-                    engine.finish()
-                } label: {
-                    Text("Finish")
-                        .font(.system(size: 15, weight: .semibold))
+            // Strava flow: one big Pause while running; Resume + Finish when paused
+            Group {
+                if !engine.paused {
+                    Button {
+                        Haptics.tap()
+                        engine.togglePause()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "pause.fill").font(.system(size: 16, weight: .bold))
+                            Text("Pause").font(.system(size: 17, weight: .bold))
+                        }
                         .foregroundStyle(app.theme.onAccent)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(app.theme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.vertical, 17)
+                        .background(app.theme.accent, in: Capsule())
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        Button {
+                            Haptics.tap()
+                            engine.togglePause()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.fill").font(.system(size: 15, weight: .bold))
+                                Text("Resume").font(.system(size: 16, weight: .bold))
+                            }
+                            .foregroundStyle(app.theme.onAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(app.theme.accent, in: Capsule())
+                        }
+                        Button {
+                            engine.finish()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "flag.checkered").font(.system(size: 15, weight: .bold))
+                                Text("Finish").font(.system(size: 16, weight: .bold))
+                            }
+                            .foregroundStyle(app.theme.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(app.theme.tint, in: Capsule())
+                        }
+                    }
                 }
             }
             .padding(.top, 16)
@@ -239,6 +267,17 @@ struct RunView: View {
         .padding(.top, 18)
         .padding(.bottom, 34)
         .glass(in: UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+    }
+
+    /// Apple Maps-style maneuver distance in the runner's unit (ft/mi or m/km).
+    private func bannerDistance(_ meters: Int) -> String {
+        if result.unit == .mi {
+            let ft = Double(meters) * 3.28084
+            if ft < 1000 { return "\(max(0, Int(ft / 10) * 10)) ft" }
+            return String(format: "%.1f mi", Double(meters) / 1609.34)
+        }
+        if meters < 1000 { return "\(meters) m" }
+        return String(format: "%.1f km", Double(meters) / 1000)
     }
 
     private var avgLine: String {

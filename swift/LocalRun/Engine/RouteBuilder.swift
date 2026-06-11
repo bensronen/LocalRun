@@ -386,7 +386,10 @@ enum RouteBuilder {
 
     static func trimOne(_ waypoints: [Annotated], shape: RouteShape) -> [Annotated] {
         guard waypoints.count > 1 else { return waypoints }
-        let removable = shape == .oneway ? Array(waypoints.dropLast()) : waypoints
+        // the user's explicit destination is never trimmed
+        let removable = (shape == .oneway ? Array(waypoints.dropLast()) : waypoints)
+            .filter { $0.id != "user-destination" }
+        guard !removable.isEmpty else { return waypoints }
         func keepValue(_ p: Annotated) -> Double {
             p.score + (p.corridor != nil ? 4 + p.scenicLength / 1000 : 0)
         }
@@ -635,6 +638,23 @@ enum RouteBuilder {
         let vibe = plan.vibe
         let profile = plan.profile
 
+        // A destination the user explicitly asked to hit becomes a high-value,
+        // untrimmable waypoint: loops thread through it, one-ways finish there.
+        var mandatory: Annotated?
+        if let dest = plan.dest {
+            let zone = annotated.min(by: {
+                Geo.haversine(dest.ll, $0.ll) < Geo.haversine(dest.ll, $1.ll)
+            })?.zone ?? city.primaryZone
+            mandatory = Annotated(
+                place: Place(id: "user-destination", name: dest.name, category: "landmark",
+                             lat: dest.lat, lng: dest.lng, zone: nil, score: 6,
+                             blurb: "The stop you asked for.", see: nil, activity: nil, tip: nil,
+                             transit: nil, corridor: nil, crossing: nil, endpoint: true),
+                corridor: nil, d: Geo.haversine(startLL, dest.ll),
+                b: Geo.bearing(startLL, dest.ll), zone: zone, boost: 1
+            )
+        }
+
         var waypoints: [Annotated]
         var route: RouteGeometry
 
@@ -645,6 +665,13 @@ enum RouteBuilder {
                 selectLoopWaypoints(start: startLL, target: target, vibe: vibe, jitter: plan.jitter, annotated: annotated, startZone: startZone),
                 selectLoopWaypoints(start: startLL, target: target, vibe: vibe, jitter: 0.6, annotated: annotated, startZone: startZone),
             ].filter { !$0.isEmpty }
+            // every candidate circuit must include the user's destination
+            if let m = mandatory {
+                sets = sets.map { set in
+                    orderWaypoints([m] + set.filter { $0.id != m.id }, shape: .loop)
+                }
+                if sets.isEmpty { sets = [[m]] }
+            }
             // dedupe by stop ids
             var seenKeys = Set<String>()
             sets = sets.filter { set in
@@ -690,21 +717,27 @@ enum RouteBuilder {
                         value($0, vibe: vibe, jitter: plan.jitter) * (1 + $0.scenicLength / 1000)
                             > value($1, vibe: vibe, jitter: plan.jitter) * (1 + $1.scenicLength / 1000)
                     }
-                var found: (Annotated, RouteGeometry)?
+                var found: ([Annotated], RouteGeometry)?
                 for cand in ranked {
-                    if let r = try? await routeFor(start: startLL, waypoints: [cand], shape: .loop, profile: profile) {
-                        found = (cand, r)
+                    let wp = mandatory != nil
+                        ? orderWaypoints([mandatory!, cand], shape: .loop) : [cand]
+                    if let r = try? await routeFor(start: startLL, waypoints: wp, shape: .loop, profile: profile) {
+                        found = (wp, r)
                         break
                     }
                 }
                 guard let f = found else {
                     throw BuildError(message: "Could not route to any scenic spot near there — try a different start.")
                 }
-                waypoints = [f.0]
+                waypoints = f.0
                 route = f.1
             }
         } else {
-            waypoints = await selectOneWayDest(start: startLL, target: target, vibe: vibe, jitter: plan.jitter, annotated: annotated, startZone: startZone, profile: profile)
+            if let m = mandatory {
+                waypoints = [m] // the asked-for destination IS the finish line
+            } else {
+                waypoints = await selectOneWayDest(start: startLL, target: target, vibe: vibe, jitter: plan.jitter, annotated: annotated, startZone: startZone, profile: profile)
+            }
             guard !waypoints.isEmpty else {
                 throw BuildError(message: "No scenic waypoints found near there at this distance.")
             }
@@ -750,8 +783,8 @@ enum RouteBuilder {
                         > value($1, vibe: vibe, jitter: plan.jitter) * (1 + $1.scenicLength / 1000)
                 }
             for cand in ranked.prefix(8) {
-                guard var r = try? await routeFor(start: startLL, waypoints: [cand], shape: .loop, profile: profile) else { continue }
-                var wp = [cand]
+                var wp = mandatory != nil ? orderWaypoints([mandatory!, cand], shape: .loop) : [cand]
+                guard var r = try? await routeFor(start: startLL, waypoints: wp, shape: .loop, profile: profile) else { continue }
                 if cand.corridor != nil, r.distanceMeters > hi {
                     let fit = await fitLongCorridor(start: startLL, waypoints: wp, shape: .loop,
                                                     target: target, profile: profile, route: r)

@@ -130,6 +130,8 @@ struct RoutePlan: Codable {
     /// "Another" passes the current route's stop ids so the rebuild steers away
     /// from them — regenerating must actually produce a different route.
     var avoid: [String] = []
+    /// A destination the route MUST hit (one-way finishes there; loops pass it).
+    var dest: StartPoint?
 }
 
 enum RouteShape: String, Codable { case loop, oneway }
@@ -205,6 +207,7 @@ struct PlanDraft: Codable {
     var unit: DistanceUnit = .km
     var shape: RouteShape = .loop
     var vibes: [String] = []
+    var dest: StartPoint?
 }
 
 // MARK: - Run history
