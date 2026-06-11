@@ -112,7 +112,11 @@ struct RouteView: View {
     private var statsRow: some View {
         HStack {
             stat(result.unit.format(result.distanceMeters), "distance")
-            stat(Format.runTime(result.distanceMeters), "easy run")
+            if let est = PaceModel.estimate(meters: result.distanceMeters) {
+                stat(est, "your pace")
+            } else {
+                stat("—", "est. time")
+            }
             stat(result.shape == .loop ? "Loop" : "One-way", "shape")
             stat("\(result.highlights.count)", "stops")
         }

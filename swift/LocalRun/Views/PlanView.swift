@@ -367,8 +367,13 @@ struct PlanView: View {
             }
             // The slider works in the SELECTED unit so steps are an honest 0.1 km or 0.1 mi.
             Slider(value: distanceInUnit, in: unitRange, step: 0.1)
-            Text("~\(Format.runTime(distanceKm * 1000)) easy run · ~\(Format.runTime(distanceKm * 1000, paceMinPerKm: 9)) brisk walk")
-                .font(.system(size: 13)).foregroundStyle(app.theme.textDim)
+            if let est = PaceModel.estimate(meters: distanceKm * 1000) {
+                Text("~\(est) at your pace")
+                    .font(.system(size: 13)).foregroundStyle(app.theme.textDim)
+            } else {
+                Text("Time estimates appear after your first saved run.")
+                    .font(.system(size: 12)).foregroundStyle(app.theme.textDim.opacity(0.8))
+            }
         }
     }
 

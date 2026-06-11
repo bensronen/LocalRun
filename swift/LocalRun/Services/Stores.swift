@@ -101,3 +101,27 @@ enum Haptics {
     static func thump() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
 }
+
+/// Time estimates come from the runner's OWN recorded pace — no generic
+/// "easy run" guesses. Until there's at least one real saved run, there is
+/// no estimate at all.
+enum PaceModel {
+    /// Personal pace in seconds per km, distance-weighted over the most
+    /// recent 5 saved runs (ignoring sub-800m fragments). nil = no data yet.
+    static func personalSecPerKm() -> Double? {
+        let runs = Stores.loadRuns().filter { $0.distM > 800 && $0.elapsed > 60 }
+        guard !runs.isEmpty else { return nil }
+        let recent = runs.prefix(5)
+        let dist = recent.reduce(0.0) { $0 + $1.distM }
+        let time = recent.reduce(0.0) { $0 + $1.elapsed }
+        guard dist > 0 else { return nil }
+        return time / (dist / 1000)
+    }
+
+    /// "38 min" / "1h 12m" at your pace, or nil before your first run.
+    static func estimate(meters: Double) -> String? {
+        guard let p = personalSecPerKm() else { return nil }
+        let mins = Int((meters / 1000 * p / 60).rounded())
+        return mins < 60 ? "\(mins) min" : "\(mins / 60)h \(mins % 60)m"
+    }
+}
