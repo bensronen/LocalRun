@@ -59,11 +59,13 @@ enum RouteBuilder {
 
     static func annotate(start: LL, city: City, plan: RoutePlan) -> [Annotated] {
         let seenSet = Set(plan.seen)
+        let avoidSet = Set(plan.avoid)
         return city.places.map { p in
             var boost = 1.0
             if let b = plan.boosts[p.id], b > 0 { boost = 1 + min(b, 5) * 0.12 }
             if plan.explore == .new, seenSet.contains(p.id) { boost *= 0.3 }
             else if plan.explore == .revisit, seenSet.contains(p.id) { boost *= 1.45 }
+            if avoidSet.contains(p.id) { boost *= 0.45 } // soft: still usable if it's all there is
             let d: Double
             if let c = p.corridor, !c.isEmpty {
                 d = c.map { Geo.haversine(start, $0) }.min() ?? 0
@@ -612,7 +614,7 @@ enum RouteBuilder {
 
         if plan.shape == .loop {
             var sets = [
-                selectScenicChain(start: startLL, target: target, vibe: vibe, jitter: 0, annotated: annotated, startZone: startZone),
+                selectScenicChain(start: startLL, target: target, vibe: vibe, jitter: plan.jitter, annotated: annotated, startZone: startZone),
                 selectScenicChain(start: startLL, target: target, vibe: vibe, jitter: 0.5, annotated: annotated, startZone: startZone),
                 selectLoopWaypoints(start: startLL, target: target, vibe: vibe, jitter: plan.jitter, annotated: annotated, startZone: startZone),
                 selectLoopWaypoints(start: startLL, target: target, vibe: vibe, jitter: 0.6, annotated: annotated, startZone: startZone),

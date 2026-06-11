@@ -29,7 +29,10 @@ final class StravaService: NSObject, ObservableObject {
 
     func connect() async throws {
         guard Config.hasStrava else { throw StravaError.notConfigured }
-        let redirect = "localrun://strava"
+        // Strava validates the HOST of the redirect against the app's
+        // "Authorization Callback Domain" — set that to `localhost` in your
+        // Strava API settings; the custom scheme is the documented mobile pattern.
+        let redirect = "localrun://localhost"
         var comps = URLComponents(string: "https://www.strava.com/oauth/mobile/authorize")!
         comps.queryItems = [
             .init(name: "client_id", value: Config.stravaClientID),

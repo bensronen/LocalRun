@@ -44,7 +44,8 @@ no build step, no database. Set `DATA_FILE` to a persistent path. Put its URL in
 ## 5. Strava
 
 1. Create an API application at https://www.strava.com/settings/api
-   ("Authorization Callback Domain": `localrun`).
+   ("Authorization Callback Domain": `localhost` — Strava validates the HOST
+   of the redirect, and the app redirects to `localrun://localhost`).
 2. Put the **Client ID** in `Config.swift`; set `STRAVA_CLIENT_ID` and
    `STRAVA_CLIENT_SECRET` as env vars on the community server (the app never
    sees the secret).

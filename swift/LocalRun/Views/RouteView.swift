@@ -44,6 +44,7 @@ struct RouteView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
                 .padding(.bottom, 30)
+                .containerRelativeFrame(.horizontal) // pin to screen width — no sideways panning
             }
         }
         .ignoresSafeArea(edges: .top)
@@ -135,11 +136,13 @@ struct RouteView: View {
                 Text(r.thesis)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(app.theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
                 ForEach(r.reasons, id: \.self) { reason in
                     HStack(alignment: .top, spacing: 8) {
                         Text("›").font(.system(size: 15, weight: .heavy)).foregroundStyle(app.theme.accent)
                         Text(reason).font(.system(size: 13)).foregroundStyle(app.theme.textDim)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, 10)
                 }
@@ -152,6 +155,7 @@ struct RouteView: View {
                         (Text(a.name).bold().foregroundColor(app.theme.text)
                             + Text(" — \(a.why)").foregroundColor(app.theme.textDim))
                             .font(.system(size: 13))
+                            .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
                     }
                 }
@@ -211,6 +215,7 @@ struct RouteView: View {
                 }
                 if let blurb = h.blurb {
                     Text(blurb).font(.system(size: 13)).foregroundStyle(app.theme.textDim)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if photos > 0 {
                     HStack(spacing: 5) {
@@ -237,6 +242,7 @@ struct RouteView: View {
                 .foregroundStyle(dim ? app.theme.textDim : app.theme.accent)
                 .padding(.top, 3)
             Text(text).font(.system(size: 13)).foregroundStyle(dim ? app.theme.textDim : app.theme.text)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 4)
     }

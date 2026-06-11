@@ -127,6 +127,9 @@ struct RoutePlan: Codable {
     var boosts: [String: Double] = [:]
     var seen: [String] = []
     var explore: ExploreMode?
+    /// "Another" passes the current route's stop ids so the rebuild steers away
+    /// from them — regenerating must actually produce a different route.
+    var avoid: [String] = []
 }
 
 enum RouteShape: String, Codable { case loop, oneway }

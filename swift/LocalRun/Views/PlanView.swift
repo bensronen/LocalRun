@@ -61,6 +61,7 @@ struct PlanView: View {
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 110)
+            .containerRelativeFrame(.horizontal)
             .animation(.easeInOut(duration: 0.18), value: suggestions.count)
         }
         .scrollDismissesKeyboard(.interactively)

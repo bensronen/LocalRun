@@ -46,7 +46,9 @@ final class AppState: ObservableObject {
         defer { regenerating = false }
         do {
             var plan = r.plan
-            plan.jitter = 0.7
+            plan.jitter = 0.9
+            // steer away from the current stops so "Another" is genuinely another
+            plan.avoid = r.highlights.map(\.id)
             let fresh = try await RouteBuilder.build(start: r.start, plan: plan, city: r.city)
             result = BuiltRoute(
                 route: fresh.route, highlights: fresh.highlights, shape: fresh.shape,

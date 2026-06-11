@@ -39,6 +39,7 @@ struct HistoryView: View {
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 110)
+            .containerRelativeFrame(.horizontal)
         }
     }
 
@@ -134,6 +135,7 @@ struct RunDetailView: View {
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 110)
+            .containerRelativeFrame(.horizontal)
         }
         .fullScreenCover(item: $viewer) { photo in
             photoViewer(photo)
