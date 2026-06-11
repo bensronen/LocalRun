@@ -1,0 +1,22 @@
+# One-click deploy: Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
+# Gives you https://localrun-api.onrender.com (or similar) with persistent storage.
+# Put that URL in swift/LocalRun/Config.swift -> apiURL, rebuild, done.
+services:
+  - type: web
+    name: localrun-api
+    runtime: node
+    plan: starter # has persistent disk; free tier sleeps and has no disk
+    buildCommand: ""
+    startCommand: node server/index.mjs
+    disk:
+      name: localrun-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_FILE
+        value: /data/localrun.json
+      # Optional, for the Strava connection (see swift/SHIPPING.md §6):
+      # - key: STRAVA_CLIENT_ID
+      #   sync: false
+      # - key: STRAVA_CLIENT_SECRET
+      #   sync: false

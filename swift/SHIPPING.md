@@ -44,11 +44,16 @@ scrypt-hashed server side). Signed-in runs carry your username to the feed;
 everything else works signed-out. **App Store note:** in-app account deletion
 is required by review and is built in (Settings → Delete account…).
 
-## 5. Community server
+## 5. Community server — 3 clicks on Render
 
-Deploy `server/index.mjs` anywhere Node 18+ runs (Railway/Render/Fly free tiers):
-no build step, no database. Set `DATA_FILE` to a persistent path. Put its URL in
-`Config.swift → apiURL`.
+1. https://dashboard.render.com → **New → Blueprint** → connect the
+   `bensronen/LocalRun` repo (it picks up `render.yaml` automatically) → **Apply**.
+2. Wait ~1 min; copy the service URL (e.g. `https://localrun-api.onrender.com`).
+3. Paste it into `Config.swift → apiURL`, rebuild. Accounts, the Feed tab,
+   profiles, and (with §6) Strava all light up at once.
+
+A `server/Dockerfile` is also included for any other host (Fly, Railway, a VPS):
+mount a volume at `/data` and you're done. Verify with `<url>/api/health`.
 
 ## 5. Strava
 

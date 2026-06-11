@@ -16,6 +16,7 @@ struct PlanView: View {
     @State private var destSuggestions: [StartPoint] = []
     @State private var destSuggestTask: Task<Void, Never>?
     @State private var mapPickerOpen = false
+    @State private var profileOpen = false
     @State private var distanceKm: Double = 5
     @State private var unit: DistanceUnit = .km
     @State private var shape: RouteShape = .loop
@@ -84,6 +85,11 @@ struct PlanView: View {
         .onChange(of: start) { _, _ in saveDraft() }
         .onChange(of: destination) { _, _ in saveDraft() }
         .sheet(isPresented: $cityPickerOpen) { cityPicker }
+        .sheet(isPresented: $profileOpen) {
+            ProfileView()
+                .environmentObject(app)
+                .presentationDetents([.medium, .large])
+        }
         .fullScreenCover(isPresented: $mapPickerOpen) {
             MapPickerSheet(city: city, start: $start) {
                 clearAddress()
@@ -122,15 +128,26 @@ struct PlanView: View {
                     .font(.subheadline).foregroundStyle(app.theme.textDim)
             }
             Spacer()
-            Button {
-                app.settingsOpen = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(app.theme.accent)
-                    .frame(width: 40, height: 40)
+            HStack(spacing: 8) {
+                Button {
+                    profileOpen = true
+                } label: {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(app.theme.accent)
+                        .frame(width: 40, height: 40)
+                }
+                .card(radius: 20)
+                Button {
+                    app.settingsOpen = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(app.theme.accent)
+                        .frame(width: 40, height: 40)
+                }
+                .card(radius: 20)
             }
-            .card(radius: 20)
         }
         .padding(.top, 8)
         .padding(.bottom, 16)
