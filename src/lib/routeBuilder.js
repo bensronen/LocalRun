@@ -535,7 +535,7 @@ function orderWaypoints(ws, shape) {
 // circuit (as seen from the start) and is folded into the loop in bearing
 // order — so extra distance rounds the circle out instead of bolting an
 // out-and-back tail past the runner's front door. Beauty breaks direction ties.
-async function addSpur(start, waypoints, shape, target, profile, beauty) {
+async function addSpur(start, waypoints, shape, target, profile, beauty, baseOverlap = 1) {
   // middle of the largest bearing gap between existing stops
   const bs = waypoints.map((w) => w._b ?? bearing(start, ll(w))).sort((a, b) => a - b);
   let gapStart = bs[bs.length - 1];
@@ -547,7 +547,24 @@ async function addSpur(start, waypoints, shape, target, profile, beauty) {
       gapStart = bs[i - 1];
     }
   }
-  const baseDir = (gapStart + gapSize / 2) % 360;
+  let baseDir = (gapStart + gapSize / 2) % 360;
+  // Never diametric: a spur opposite the only stop puts the START on the line
+  // between them — the route passes home and retraces. Keep the spur within
+  // 110° of the nearest stop so the circuit stays a triangle around the start.
+  let nearestB = bs[0];
+  let nearestDiff = 360;
+  for (const b of bs) {
+    const ad = angularDiff(baseDir, b);
+    if (ad < nearestDiff) {
+      nearestDiff = ad;
+      nearestB = b;
+    }
+  }
+  if (nearestDiff > 110) {
+    const a = nearestB + 110;
+    const b2 = nearestB - 110;
+    baseDir = angularDiff(a, baseDir) <= angularDiff(b2, baseDir) ? a : b2;
+  }
   let dir = baseDir;
   if (beauty) {
     let bestB = -1;
@@ -567,7 +584,7 @@ async function addSpur(start, waypoints, shape, target, profile, beauty) {
   for (let i = 0; i < 7; i++) {
     const d = (lo + hi) / 2;
     const p = destinationPoint(start, dir, d);
-    const spur = { id: '_spur', lat: p.lat, lng: p.lng, _b: dir % 360, _d: d };
+    const spur = { id: '_spur', lat: p.lat, lng: p.lng, _b: ((dir % 360) + 360) % 360, _d: d };
     const seq = shape === 'loop' ? orderWaypoints([...waypoints, spur], shape) : [...waypoints, spur];
     let r;
     try {
@@ -576,12 +593,14 @@ async function addSpur(start, waypoints, shape, target, profile, beauty) {
       hi = d; // spur point unroutable (water, etc.) — pull it closer
       continue;
     }
+    // distance is never worth doubling back: a spur that retraces is rejected
+    const acceptable = selfOverlap(r.coordinates) <= baseOverlap + 0.1;
     const err = Math.abs(r.distanceMeters - target);
-    if (err < bestErr) {
+    if (acceptable && err < bestErr) {
       bestErr = err;
       best = r;
     }
-    if (err <= target * TOLERANCE) return r;
+    if (acceptable && err <= target * TOLERANCE) return r;
     if (r.distanceMeters < target) lo = d;
     else hi = d;
   }
@@ -735,13 +754,31 @@ export async function buildRoute(
   if (shape === 'loop') {
     // Compete a few candidate circuits and keep the one that runs through the most
     // scenery with the least backtracking — optimizing the PATH, not just the stops.
-    const sets = dedupeSets([
+    let sets = dedupeSets([
       selectScenicChain(start, targetMeters, vibe, 0, annotated, startZone),
       selectScenicChain(start, targetMeters, vibe, 0.5, annotated, startZone),
       selectLoopWaypoints(start, targetMeters, vibe, jitter, annotated, startZone),
       selectLoopWaypoints(start, targetMeters, vibe, 0.6, annotated, startZone),
     ]);
-    if (!sets.length) throw new Error('No scenic waypoints found near there at this distance.');
+    if (!sets.length) {
+      // Standing on the only sight (or in an empty pocket): synthesize an
+      // unnamed anchor toward the most scenic reachable direction so the
+      // lens still makes a clean circle of the right size. It carries no
+      // marker — the run is just a good loop from the door.
+      let bestDir = 0;
+      let bestScore = -Infinity;
+      for (let dd = 0; dd < 360; dd += 45) {
+        const probe = destinationPoint(start, dd, targetMeters * 0.3);
+        const { dmin } = nearestFeature(probe, annotated);
+        const sc = beautyAt(city.beauty, probe) * 2 + Math.max(0, 1 - dmin / 2000);
+        if (sc > bestScore) {
+          bestScore = sc;
+          bestDir = dd;
+        }
+      }
+      const p = destinationPoint(start, bestDir, targetMeters * 0.3);
+      sets = [[{ id: '_anchor', lat: p.lat, lng: p.lng, _b: bestDir, _d: targetMeters * 0.3, _zone: startZone, score: 0 }]];
+    }
     // A set containing one unroutable waypoint (a pier, an island) must not kill the
     // build — score the sets that route, and only fall back if none do.
     const scored = (
@@ -900,26 +937,29 @@ export async function buildRoute(
   if (route.distanceMeters < lo) {
     const r =
       shape === 'loop'
-        ? await addSpur(start, waypoints, shape, targetMeters, profile, city.beauty)
+        ? await addSpur(start, waypoints, shape, targetMeters, profile, city.beauty,
+            selfOverlap(route.coordinates))
         : await addOnewayDetour(start, waypoints, targetMeters, profile);
     if (r && Math.abs(r.distanceMeters - targetMeters) < Math.abs(route.distanceMeters - targetMeters)) {
       route = r;
     }
   }
 
+  // synthetic anchors (_anchor) shaped the route but aren't real sights
+  const visible = waypoints.filter((w) => !String(w.id).startsWith('_'));
   const rationale = computeRationale({
     city,
     shape,
     vibe,
     distanceMeters: route.distanceMeters,
-    highlights: waypoints,
+    highlights: visible,
     annotated,
     startZone,
   });
 
   return {
     route,
-    highlights: waypoints,
+    highlights: visible,
     shape,
     targetMeters,
     distanceMeters: route.distanceMeters,

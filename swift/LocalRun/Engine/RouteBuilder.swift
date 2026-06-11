@@ -493,7 +493,7 @@ enum RouteBuilder {
     /// rounds the circle out instead of bolting a tail past the start.
     static func addSpur(
         start: LL, waypoints: [Annotated], shape: RouteShape, target: Double,
-        profile: String, beauty: BeautyGrid?
+        profile: String, beauty: BeautyGrid?, baseOverlap: Double = 1
     ) async -> RouteGeometry? {
         // middle of the largest bearing gap between existing stops
         let bs = waypoints.map(\.b).sorted()
@@ -503,7 +503,21 @@ enum RouteBuilder {
             gapSize = bs[i] - bs[i - 1]
             gapStart = bs[i - 1]
         }
-        let baseDir = (gapStart + gapSize / 2).truncatingRemainder(dividingBy: 360)
+        var baseDir = (gapStart + gapSize / 2).truncatingRemainder(dividingBy: 360)
+        // Never diametric: a spur opposite the only stop puts the START on the
+        // line between them — the route passes home and retraces. Keep within
+        // 110° of the nearest stop so the circuit stays a triangle.
+        var nearestB = bs[0]
+        var nearestDiff = 360.0
+        for b in bs {
+            let ad = Geo.angularDiff(baseDir, b)
+            if ad < nearestDiff { nearestDiff = ad; nearestB = b }
+        }
+        if nearestDiff > 110 {
+            let a = nearestB + 110
+            let b2 = nearestB - 110
+            baseDir = Geo.angularDiff(a, baseDir) <= Geo.angularDiff(b2, baseDir) ? a : b2
+        }
         var dir = baseDir
         if beauty != nil {
             var best = -1.0
@@ -520,20 +534,23 @@ enum RouteBuilder {
         for _ in 0..<7 {
             let d = (lo + hi) / 2
             let p = Geo.destination(start, bearingDeg: dir, distMeters: d)
+            let normB = (dir.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
             let spur = Annotated(
                 place: Place(id: "_spur", name: "_spur", category: "landmark", lat: p.lat, lng: p.lng,
                              zone: nil, score: 0, blurb: nil, see: nil, activity: nil, tip: nil,
                              transit: nil, corridor: nil, crossing: nil, endpoint: nil),
-                corridor: nil, d: d, b: dir.truncatingRemainder(dividingBy: 360), zone: "", boost: 1
+                corridor: nil, d: d, b: normB, zone: "", boost: 1
             )
             let seq = shape == .loop ? orderWaypoints(waypoints + [spur], shape: shape) : waypoints + [spur]
             guard let r = try? await routeFor(start: start, waypoints: seq, shape: shape, profile: profile) else {
                 hi = d // spur point unroutable — pull it closer
                 continue
             }
+            // distance is never worth doubling back: a retracing spur is rejected
+            let acceptable = selfOverlap(r.coordinates) <= baseOverlap + 0.1
             let err = abs(r.distanceMeters - target)
-            if err < bestErr { bestErr = err; best = r }
-            if err <= target * tolerance { return r }
+            if acceptable, err < bestErr { bestErr = err; best = r }
+            if acceptable, err <= target * tolerance { return r }
             if r.distanceMeters < target { lo = d } else { hi = d }
         }
         return best
@@ -634,8 +651,26 @@ enum RouteBuilder {
                 let key = set.map(\.id).sorted().joined(separator: ",")
                 return seenKeys.insert(key).inserted
             }
-            guard !sets.isEmpty else {
-                throw BuildError(message: "No scenic waypoints found near there at this distance.")
+            if sets.isEmpty {
+                // Standing on the only sight (or an empty pocket): synthesize an
+                // unnamed anchor toward the most scenic reachable direction so
+                // the lens still makes a clean circle of the right size.
+                var bestDir = 0.0
+                var bestScore = -Double.infinity
+                for dd in stride(from: 0.0, to: 360, by: 45) {
+                    let probe = Geo.destination(startLL, bearingDeg: dd, distMeters: target * 0.3)
+                    let (dmin, _) = nearestFeature(probe, annotated)
+                    let sc = beautyAt(city.beauty, probe) * 2 + max(0, 1 - dmin / 2000)
+                    if sc > bestScore { bestScore = sc; bestDir = dd }
+                }
+                let p = Geo.destination(startLL, bearingDeg: bestDir, distMeters: target * 0.3)
+                let anchor = Annotated(
+                    place: Place(id: "_anchor", name: "_anchor", category: "landmark", lat: p.lat, lng: p.lng,
+                                 zone: nil, score: 0, blurb: nil, see: nil, activity: nil, tip: nil,
+                                 transit: nil, corridor: nil, crossing: nil, endpoint: nil),
+                    corridor: nil, d: target * 0.3, b: bestDir, zone: startZone, boost: 1
+                )
+                sets = [[anchor]]
             }
             // Score each set that routes; one unroutable waypoint never kills the build.
             var scored: [(set: [Annotated], r: RouteGeometry, sc: Double)] = []
@@ -763,7 +798,8 @@ enum RouteBuilder {
             let r: RouteGeometry?
             if plan.shape == .loop {
                 r = await addSpur(start: startLL, waypoints: waypoints, shape: .loop,
-                                  target: target, profile: profile, beauty: city.beauty)
+                                  target: target, profile: profile, beauty: city.beauty,
+                                  baseOverlap: selfOverlap(route.coordinates))
             } else {
                 r = await addOnewayDetour(start: startLL, waypoints: waypoints, target: target, profile: profile)
             }
@@ -772,12 +808,14 @@ enum RouteBuilder {
             }
         }
 
+        // synthetic anchors (_anchor) shaped the route but aren't real sights
+        let visible = waypoints.filter { !$0.id.hasPrefix("_") }
         let rationale = computeRationale(city: city, shape: plan.shape, vibe: vibe,
                                          distanceMeters: route.distanceMeters,
-                                         highlights: waypoints, annotated: annotated, startZone: startZone)
-        return Output(route: route, highlights: waypoints.map(\.place), shape: plan.shape,
+                                         highlights: visible, annotated: annotated, startZone: startZone)
+        return Output(route: route, highlights: visible.map(\.place), shape: plan.shape,
                       targetMeters: target, distanceMeters: route.distanceMeters,
-                      rationale: rationale, stops: waypoints)
+                      rationale: rationale, stops: visible)
     }
 
     // MARK: - Rationale
