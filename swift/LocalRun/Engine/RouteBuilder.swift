@@ -281,6 +281,21 @@ enum RouteBuilder {
         return prox / n + (beautySum / n) * 1.4 + Double(min(seen.count, 10)) * 0.05 - (dead / n) * 1.1
     }
 
+    /// True if the MIDDLE of the route (12%-88% of its length) comes within 50m
+    /// of the start — the run passes the runner's own door and keeps going.
+    /// Street topology can force this even when waypoint geometry looks fine.
+    static func passesNearStart(_ coords: [LL], start: LL) -> Bool {
+        let pts = sampleAlong(coords, step: 60)
+        let n = pts.count
+        guard n >= 10 else { return false }
+        var hits = 0
+        for (i, p) in pts.enumerated() {
+            let frac = Double(i) / Double(n)
+            if frac > 0.12, frac < 0.88, Geo.haversine(p, start) < 50 { hits += 1 }
+        }
+        return hits > 1
+    }
+
     /// Fraction of the route that runs close to a non-adjacent part of itself.
     static func selfOverlap(_ coords: [LL]) -> Double {
         let s = sampleAlong(coords, step: 80)
@@ -549,8 +564,9 @@ enum RouteBuilder {
                 hi = d // spur point unroutable — pull it closer
                 continue
             }
-            // distance is never worth doubling back: a retracing spur is rejected
-            let acceptable = selfOverlap(r.coordinates) <= baseOverlap + 0.1
+            // distance is never worth doubling back or passing the runner's door
+            let acceptable = selfOverlap(r.coordinates) <= baseOverlap + 0.03
+                && !passesNearStart(r.coordinates, start: start)
             let err = abs(r.distanceMeters - target)
             if acceptable, err < bestErr { bestErr = err; best = r }
             if acceptable, err <= target * tolerance { return r }
@@ -819,7 +835,9 @@ enum RouteBuilder {
             let trial = orderWaypoints(waypoints + [cand], shape: plan.shape)
             guard let r = try? await routeFor(start: startLL, waypoints: trial, shape: plan.shape, profile: profile) else { continue }
             if r.distanceMeters <= hi, r.distanceMeters > route.distanceMeters,
-               selfOverlap(r.coordinates) <= selfOverlap(route.coordinates) + 0.08 {
+               // never grow by doubling back or by passing the runner's own door
+               selfOverlap(r.coordinates) <= selfOverlap(route.coordinates) + 0.08,
+               !passesNearStart(r.coordinates, start: startLL) {
                 waypoints = trial
                 route = r
                 used.insert(cand.id)

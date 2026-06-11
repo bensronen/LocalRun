@@ -327,6 +327,22 @@ function sceneryScore(routeCoords, annotated, beauty) {
   );
 }
 
+// True if the MIDDLE of the route (between 12% and 88% of its length) comes
+// within 50m of the start — i.e. the run passes the runner's own door and
+// keeps going. Street topology can force this even when waypoint geometry
+// looks fine, so it's checked on the real routed line.
+function passesNearStart(coords, start) {
+  const pts = sampleAlong(toLL(coords), 60);
+  const n = pts.length;
+  if (n < 10) return false;
+  let hits = 0;
+  for (let i = 0; i < n; i++) {
+    const frac = i / n;
+    if (frac > 0.12 && frac < 0.88 && haversine(pts[i], start) < 50) hits += 1;
+  }
+  return hits > 1;
+}
+
 // Fraction of the route that runs close to a non-adjacent part of itself — i.e. how
 // much it doubles back (an out-and-back scores high; a clean loop scores ~0).
 function selfOverlap(routeCoords) {
@@ -597,8 +613,9 @@ async function addSpur(start, waypoints, shape, target, profile, beauty, baseOve
       hi = d; // spur point unroutable (water, etc.) — pull it closer
       continue;
     }
-    // distance is never worth doubling back: a spur that retraces is rejected
-    const acceptable = selfOverlap(r.coordinates) <= baseOverlap + 0.1;
+    // distance is never worth doubling back or passing the runner's own door
+    const acceptable =
+      selfOverlap(r.coordinates) <= baseOverlap + 0.03 && !passesNearStart(r.coordinates, start);
     const err = Math.abs(r.distanceMeters - target);
     if (acceptable && err < bestErr) {
       bestErr = err;
@@ -968,8 +985,9 @@ export async function buildRoute(
     if (
       r.distanceMeters <= hi &&
       r.distanceMeters > route.distanceMeters &&
-      // never grow by doubling back over ground already covered
-      selfOverlap(r.coordinates) <= selfOverlap(route.coordinates) + 0.08
+      // never grow by doubling back or by passing the runner's own door
+      selfOverlap(r.coordinates) <= selfOverlap(route.coordinates) + 0.08 &&
+      !passesNearStart(r.coordinates, start)
     ) {
       waypoints = trial;
       route = r;

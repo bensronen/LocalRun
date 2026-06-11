@@ -646,6 +646,8 @@ struct MapPickerSheet: View {
     @State private var address = ""
     @State private var suggestions: [StartPoint] = []
     @State private var suggestTask: Task<Void, Never>?
+    @State private var locating = false
+    private let locator = CLLocationManager()
 
     init(city: City, start: Binding<StartPoint>, onChanged: @escaping () -> Void) {
         self.city = city
@@ -661,6 +663,7 @@ struct MapPickerSheet: View {
         ZStack(alignment: .bottom) {
             MapReader { proxy in
                 Map(position: $camera) {
+                    UserAnnotation()
                     Annotation("", coordinate: start.ll.cl) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 32))
@@ -677,9 +680,26 @@ struct MapPickerSheet: View {
                 .ignoresSafeArea()
             }
 
+            // easy way back, always visible
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(app.theme.text)
+                            .frame(width: 42, height: 42)
+                            .glass(in: Circle())
+                    }
+                    Spacer()
+                }
+                .padding(.leading, 16)
+                .padding(.top, 8)
+                Spacer()
+            }
+
             VStack(alignment: .leading, spacing: 10) {
-                Capsule().fill(app.theme.textDim.opacity(0.35)).frame(width: 40, height: 5)
-                    .frame(maxWidth: .infinity)
                 Text("START FROM")
                     .font(.system(size: 12, weight: .semibold)).kerning(0.6)
                     .foregroundStyle(app.theme.textDim)
@@ -711,6 +731,19 @@ struct MapPickerSheet: View {
                                 in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 FlowRow {
+                    Button {
+                        useMyLocation()
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "location.fill").font(.system(size: 11, weight: .semibold))
+                            Text(locating ? "Locating…" : "My location")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(app.theme.accent)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 7)
+                        .background(app.theme.tint, in: Capsule())
+                    }
                     ForEach(city.presets, id: \.label) { p in
                         Button {
                             pick(p.start)
@@ -756,6 +789,23 @@ struct MapPickerSheet: View {
             center: s.ll.cl, span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
         ))
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private func useMyLocation() {
+        locating = true
+        locator.requestWhenInUseAuthorization()
+        locator.startUpdatingLocation()
+        Task {
+            for _ in 0..<20 {
+                if let loc = locator.location {
+                    pick(StartPoint(lat: loc.coordinate.latitude, lng: loc.coordinate.longitude, name: "My location"))
+                    break
+                }
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+            locator.stopUpdatingLocation()
+            locating = false
+        }
     }
 
     private func schedule(_ text: String) {

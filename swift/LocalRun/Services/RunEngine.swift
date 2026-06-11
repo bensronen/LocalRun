@@ -19,6 +19,10 @@ final class RunEngine: NSObject, ObservableObject {
     @Published var splits: [Double] = []
     @Published var photos: [PhotoRecord] = []
     @Published var locationDenied = false
+    @Published var heading: Double = 0
+    /// Index into the route polyline marking how far along it you've run —
+    /// drives the two-tone done/remaining trail coloring.
+    @Published var progressIdx: Int = 0
 
     struct Banner { var instruction: String; var symbol: String; var meters: Int }
     struct Callout { var name: String; var text: String }
@@ -170,6 +174,19 @@ final class RunEngine: NSObject, ObservableObject {
             if d >= 2, d < 70 { distM += d }
         }
         prev = cur
+        if loc.course >= 0 { heading = loc.course }
+
+        // advance route progress monotonically (windowed nearest-point search)
+        var bestIdx = progressIdx
+        var bestD = Double.infinity
+        let upper = min(routeCoords.count, progressIdx + 40)
+        if progressIdx < upper {
+            for i in progressIdx..<upper {
+                let d = Geo.haversine(cur, routeCoords[i])
+                if d < bestD { bestD = d; bestIdx = i }
+            }
+            if bestD < 60 { progressIdx = bestIdx }
+        }
 
         // splits
         let completed = Int(distM / unitM)

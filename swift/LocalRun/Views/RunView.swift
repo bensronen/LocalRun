@@ -43,6 +43,15 @@ struct RunView: View {
         .ignoresSafeArea(edges: .bottom)
         .task { await engine.start() }
         .onDisappear { engine.stop() }
+        .onChange(of: engine.position?.lat) { _, _ in
+            // tight Apple Maps-style chase cam: close in, rotated to your heading
+            guard let p = engine.position, !engine.done else { return }
+            withAnimation(.linear(duration: 0.6)) {
+                mapPosition = .camera(MapCamera(
+                    centerCoordinate: p.cl, distance: 320, heading: engine.heading, pitch: 0
+                ))
+            }
+        }
         .sheet(isPresented: $cameraOpen) {
             CameraPicker { image in
                 engine.addPhoto(image)
@@ -78,11 +87,31 @@ struct RunView: View {
 
     // MARK: - Map
 
+    /// Route split at your progress point: dimmed where you've been,
+    /// accent where you're going.
+    private var doneCoords: [LL] {
+        let coords = result.route.coordinates
+        let split = min(max(engine.progressIdx, 0), coords.count - 1)
+        return Array(coords[0...split])
+    }
+
+    private var remainingCoords: [LL] {
+        let coords = result.route.coordinates
+        let split = min(max(engine.progressIdx, 0), coords.count - 1)
+        return Array(coords[split...])
+    }
+
     private var runMap: some View {
         Map(position: $mapPosition) {
             UserAnnotation()
-            MapPolyline(coordinates: result.route.coordinates.map(\.cl))
-                .stroke(app.theme.accent, lineWidth: 6)
+            if doneCoords.count > 1 {
+                MapPolyline(coordinates: doneCoords.map(\.cl))
+                    .stroke(app.theme.textDim.opacity(0.55), lineWidth: 6)
+            }
+            if remainingCoords.count > 1 {
+                MapPolyline(coordinates: remainingCoords.map(\.cl))
+                    .stroke(app.theme.accent, lineWidth: 6)
+            }
             ForEach(Array(result.highlights.enumerated()), id: \.element.id) { i, h in
                 Annotation("", coordinate: h.ll.cl) {
                     Text(engine.announced.contains(h.id) ? "✓" : "\(i + 1)")
