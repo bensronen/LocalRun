@@ -65,7 +65,9 @@ final class AppState: ObservableObject {
         Stores.appendRun(record)
         Stores.applyBoosts(from: record)
         Task { await CommunityAPI.submit(record) }
-        running = false
-        result = nil
+        withAnimation(.easeInOut(duration: 0.25)) {
+            running = false
+            result = nil
+        }
     }
 }

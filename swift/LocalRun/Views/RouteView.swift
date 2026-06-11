@@ -65,7 +65,7 @@ struct RouteView: View {
         .frame(height: UIScreen.main.bounds.height * 0.42)
         .overlay(alignment: .topLeading) {
             Button {
-                app.result = nil
+                withAnimation(.easeInOut(duration: 0.25)) { app.result = nil }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold))
@@ -245,7 +245,7 @@ struct RouteView: View {
         VStack(spacing: 12) {
             Button {
                 Haptics.thump()
-                app.running = true
+                withAnimation(.easeInOut(duration: 0.25)) { app.running = true }
             } label: {
                 Text("Start run")
                     .font(.system(size: 17, weight: .semibold))
@@ -258,7 +258,7 @@ struct RouteView: View {
             .opacity(app.regenerating ? 0.5 : 1)
             HStack(spacing: 12) {
                 Button {
-                    app.result = nil
+                    withAnimation(.easeInOut(duration: 0.25)) { app.result = nil }
                 } label: {
                     Text("Adjust").font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(app.theme.accent)

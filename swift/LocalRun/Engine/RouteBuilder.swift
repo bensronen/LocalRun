@@ -285,6 +285,8 @@ enum RouteBuilder {
         guard s.count >= 8 else { return 0 }
         var overlap = 0
         for i in 0..<s.count {
+            // unlike JS, Swift traps on an inverted range — stop once i+4 passes the end
+            guard i + 4 < s.count else { break }
             for j in (i + 4)..<s.count where Geo.haversine(s[i], s[j]) < 35 {
                 overlap += 1
                 break

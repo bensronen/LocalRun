@@ -35,6 +35,9 @@ struct RunView: View {
                 cameraButton
                 bottomPanel
             }
+            .animation(.spring(duration: 0.35), value: engine.banner?.instruction)
+            .animation(.spring(duration: 0.35), value: engine.callout?.name)
+            .animation(.easeInOut(duration: 0.3), value: engine.done)
         }
         .ignoresSafeArea(edges: .bottom)
         .task { await engine.start() }
@@ -64,7 +67,9 @@ struct RunView: View {
         }
         .alert("End this run?", isPresented: $exitConfirm) {
             Button("Keep running", role: .cancel) {}
-            Button("End run", role: .destructive) { app.running = false }
+            Button("End run", role: .destructive) {
+                withAnimation(.easeInOut(duration: 0.25)) { app.running = false }
+            }
         } message: {
             Text("Your time and distance will be discarded.")
         }
@@ -137,8 +142,11 @@ struct RunView: View {
                 Spacer()
             }
             Button {
-                if engine.done || !engine.started { app.running = false }
-                else { exitConfirm = true }
+                if engine.done || !engine.started {
+                    withAnimation(.easeInOut(duration: 0.25)) { app.running = false }
+                } else {
+                    exitConfirm = true
+                }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
@@ -280,7 +288,7 @@ struct RunView: View {
             }
             HStack(spacing: 12) {
                 Button {
-                    app.running = false
+                    withAnimation(.easeInOut(duration: 0.25)) { app.running = false }
                 } label: {
                     Text("Discard")
                         .font(.system(size: 15, weight: .semibold))
@@ -319,6 +327,8 @@ struct RunView: View {
                 .foregroundStyle(app.theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+                .animation(.snappy(duration: 0.25), value: value)
             Text(label).font(.system(size: 12)).foregroundStyle(app.theme.textDim)
         }
         .frame(maxWidth: .infinity)

@@ -11,8 +11,10 @@ struct ContentView: View {
 
             if app.running, let result = app.result {
                 RunView(result: result)
+                    .transition(.opacity)
             } else if let result = app.result {
                 RouteView(result: result)
+                    .transition(.opacity)
             } else {
                 Group {
                     switch app.tab {
@@ -20,6 +22,7 @@ struct ContentView: View {
                     case .history: HistoryView()
                     }
                 }
+                .transition(.opacity)
                 TabBarView()
                     .padding(.bottom, 10)
             }
@@ -51,7 +54,7 @@ struct TabBarView: View {
         return Button {
             if !active {
                 Haptics.tap()
-                app.tab = tab
+                withAnimation(.easeInOut(duration: 0.2)) { app.tab = tab }
             }
         } label: {
             HStack(spacing: 7) {

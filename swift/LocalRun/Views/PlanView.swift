@@ -61,6 +61,7 @@ struct PlanView: View {
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 110)
+            .animation(.easeInOut(duration: 0.18), value: suggestions.count)
         }
         .scrollDismissesKeyboard(.interactively)
         .onAppear(perform: hydrate)
@@ -203,6 +204,7 @@ struct PlanView: View {
             }
             .card(radius: 12)
             .padding(.top, 6)
+            .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
@@ -268,6 +270,8 @@ struct PlanView: View {
                 Text(unit.format(distanceKm * 1000))
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(app.theme.text)
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.2), value: distanceKm)
                 Spacer()
                 Picker("", selection: $unit) {
                     ForEach(DistanceUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -275,10 +279,20 @@ struct PlanView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 110)
             }
-            Slider(value: $distanceKm, in: 1...21, step: 0.5)
+            // The slider works in the SELECTED unit so steps are an honest 0.1 km or 0.1 mi.
+            Slider(value: distanceInUnit, in: unitRange, step: 0.1)
             Text("~\(Format.runTime(distanceKm * 1000)) easy run · ~\(Format.runTime(distanceKm * 1000, paceMinPerKm: 9)) brisk walk")
                 .font(.system(size: 13)).foregroundStyle(app.theme.textDim)
         }
+    }
+
+    private var unitRange: ClosedRange<Double> { unit == .mi ? 0.6...13 : 1...21 }
+
+    private var distanceInUnit: Binding<Double> {
+        Binding(
+            get: { min(unitRange.upperBound, max(unitRange.lowerBound, distanceKm * 1000 / unit.meters)) },
+            set: { distanceKm = ($0 * unit.meters / 1000 * 100).rounded() / 100 }
+        )
     }
 
     private var shapePicker: some View {
@@ -502,12 +516,14 @@ struct PlanView: View {
         do {
             let out = try await RouteBuilder.build(start: start, plan: plan, city: city)
             Haptics.success()
-            app.result = BuiltRoute(
-                route: out.route, highlights: out.highlights, shape: out.shape,
-                targetMeters: out.targetMeters, distanceMeters: out.distanceMeters,
-                rationale: out.rationale, start: start, unit: unit, plan: plan,
-                city: city, community: community
-            )
+            withAnimation(.easeInOut(duration: 0.25)) {
+                app.result = BuiltRoute(
+                    route: out.route, highlights: out.highlights, shape: out.shape,
+                    targetMeters: out.targetMeters, distanceMeters: out.distanceMeters,
+                    rationale: out.rationale, start: start, unit: unit, plan: plan,
+                    city: city, community: community
+                )
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
