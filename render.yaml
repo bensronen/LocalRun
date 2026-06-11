@@ -1,20 +1,29 @@
 # One-click deploy: Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
-# Gives you https://localrun-api.onrender.com (or similar) with persistent storage.
-# Put that URL in swift/LocalRun/Config.swift -> apiURL, rebuild, done.
+# Put the resulting URL in swift/LocalRun/Config.swift -> apiURL, rebuild, done.
+#
+# FREE TIER (default below): works, with two caveats —
+#   1. No persistent disk: accounts/feed reset whenever the service restarts
+#      or redeploys. Fine for testing with friends; not for a real launch.
+#   2. Sleeps after ~15 min idle; the first request takes ~30-60s to wake.
+#      The app tolerates this (long timeouts), but the feed's first load
+#      after a quiet period will feel slow.
+#
+# LAUNCH SETUP: switch `plan: free` to `plan: starter` (~$7/mo) and uncomment
+# the disk + DATA_FILE lines so accounts survive restarts.
 services:
   - type: web
     name: localrun-api
     runtime: node
-    plan: starter # has persistent disk; free tier sleeps and has no disk
+    plan: free
     buildCommand: ""
     startCommand: node server/index.mjs
-    disk:
-      name: localrun-data
-      mountPath: /data
-      sizeGB: 1
+    # disk:
+    #   name: localrun-data
+    #   mountPath: /data
+    #   sizeGB: 1
     envVars:
-      - key: DATA_FILE
-        value: /data/localrun.json
+      # - key: DATA_FILE
+      #   value: /data/localrun.json
       # Optional, for the Strava connection (see swift/SHIPPING.md §6):
       # - key: STRAVA_CLIENT_ID
       #   sync: false
