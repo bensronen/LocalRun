@@ -515,14 +515,14 @@ struct PlanView: View {
     private func scheduleSuggest(_ text: String) {
         suggestTask?.cancel()
         let q = text.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 3, Config.hasMapboxToken else {
+        guard q.count >= 3 else {
             suggestions = []
             return
         }
         suggestTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
+            let hits = await PlaceSearch.search(q, city: city)
             if !Task.isCancelled { suggestions = hits }
         }
     }
@@ -530,14 +530,14 @@ struct PlanView: View {
     private func scheduleDestSuggest(_ text: String) {
         destSuggestTask?.cancel()
         let q = text.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 3, Config.hasMapboxToken else {
+        guard q.count >= 3 else {
             destSuggestions = []
             return
         }
         destSuggestTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
+            let hits = await PlaceSearch.search(q, city: city)
             if !Task.isCancelled { destSuggestions = hits }
         }
     }
@@ -557,9 +557,9 @@ struct PlanView: View {
         let q = address.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return }
         Task {
-            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox, limit: 1, autocomplete: false)
+            let hits = await PlaceSearch.search(q, city: city)
             if let hit = hits.first { pickSuggestion(hit) }
-            else { errorMessage = "Not found — try a more specific \(city.name) address or drop a pin." }
+            else { errorMessage = "Not found — try a more specific \(city.name) place or drop a pin." }
         }
     }
 
@@ -811,14 +811,14 @@ struct MapPickerSheet: View {
     private func schedule(_ text: String) {
         suggestTask?.cancel()
         let q = text.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 3, Config.hasMapboxToken else {
+        guard q.count >= 3 else {
             suggestions = []
             return
         }
         suggestTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            let hits = await MapboxAPI.geocodeSuggest(q, proximity: start.ll, bbox: city.bbox)
+            let hits = await PlaceSearch.search(q, city: city)
             if !Task.isCancelled { suggestions = hits }
         }
     }
