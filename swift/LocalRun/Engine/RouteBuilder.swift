@@ -488,18 +488,26 @@ enum RouteBuilder {
         return under ?? best
     }
 
-    /// Measured top-up spur, aimed at the prettiest ground the beauty grid knows.
+    /// Measured top-up. The extension aims into the EMPTIEST angular sector of
+    /// the circuit and is folded into the loop in bearing order — extra distance
+    /// rounds the circle out instead of bolting a tail past the start.
     static func addSpur(
         start: LL, waypoints: [Annotated], shape: RouteShape, target: Double,
         profile: String, beauty: BeautyGrid?
     ) async -> RouteGeometry? {
-        let cLat = waypoints.map { $0.place.lat }.reduce(0, +) / Double(waypoints.count)
-        let cLng = waypoints.map { $0.place.lng }.reduce(0, +) / Double(waypoints.count)
-        let baseDir = Geo.bearing(start, LL(lat: cLat, lng: cLng))
+        // middle of the largest bearing gap between existing stops
+        let bs = waypoints.map(\.b).sorted()
+        var gapStart = bs[bs.count - 1]
+        var gapSize = bs[0] + 360 - gapStart
+        for i in 1..<bs.count where bs[i] - bs[i - 1] > gapSize {
+            gapSize = bs[i] - bs[i - 1]
+            gapStart = bs[i - 1]
+        }
+        let baseDir = (gapStart + gapSize / 2).truncatingRemainder(dividingBy: 360)
         var dir = baseDir
         if beauty != nil {
             var best = -1.0
-            for dd in [-50.0, -25, 0, 25, 50] {
+            for dd in [-40.0, -20, 0, 20, 40] {
                 let probe = Geo.destination(start, bearingDeg: baseDir + dd, distMeters: target * 0.25)
                 let bv = beautyAt(beauty, probe)
                 if bv > best { best = bv; dir = baseDir + dd }
@@ -516,9 +524,10 @@ enum RouteBuilder {
                 place: Place(id: "_spur", name: "_spur", category: "landmark", lat: p.lat, lng: p.lng,
                              zone: nil, score: 0, blurb: nil, see: nil, activity: nil, tip: nil,
                              transit: nil, corridor: nil, crossing: nil, endpoint: nil),
-                corridor: nil, d: d, b: dir, zone: "", boost: 1
+                corridor: nil, d: d, b: dir.truncatingRemainder(dividingBy: 360), zone: "", boost: 1
             )
-            guard let r = try? await routeFor(start: start, waypoints: waypoints + [spur], shape: shape, profile: profile) else {
+            let seq = shape == .loop ? orderWaypoints(waypoints + [spur], shape: shape) : waypoints + [spur]
+            guard let r = try? await routeFor(start: start, waypoints: seq, shape: shape, profile: profile) else {
                 hi = d // spur point unroutable — pull it closer
                 continue
             }

@@ -531,21 +531,31 @@ function orderWaypoints(ws, shape) {
   return [...ws].sort((a, b) => (shape === 'loop' ? a._b - b._b : a._d - b._d));
 }
 
-// Precise top-up: append a measured extension, binary-searching its length until
-// the real distance lands within tol. The spur carries no marker — but it aims
-// at the prettiest ground the beauty grid knows about, not just "outward".
+// Precise top-up. The extension aims into the EMPTIEST angular sector of the
+// circuit (as seen from the start) and is folded into the loop in bearing
+// order — so extra distance rounds the circle out instead of bolting an
+// out-and-back tail past the runner's front door. Beauty breaks direction ties.
 async function addSpur(start, waypoints, shape, target, profile, beauty) {
-  const cLat = waypoints.reduce((s, w) => s + w.lat, 0) / waypoints.length;
-  const cLng = waypoints.reduce((s, w) => s + w.lng, 0) / waypoints.length;
-  const baseDir = bearing(start, { lat: cLat, lng: cLng });
+  // middle of the largest bearing gap between existing stops
+  const bs = waypoints.map((w) => w._b ?? bearing(start, ll(w))).sort((a, b) => a - b);
+  let gapStart = bs[bs.length - 1];
+  let gapSize = bs[0] + 360 - gapStart;
+  for (let i = 1; i < bs.length; i++) {
+    const g = bs[i] - bs[i - 1];
+    if (g > gapSize) {
+      gapSize = g;
+      gapStart = bs[i - 1];
+    }
+  }
+  const baseDir = (gapStart + gapSize / 2) % 360;
   let dir = baseDir;
   if (beauty) {
-    let best = -1;
-    for (const dd of [-50, -25, 0, 25, 50]) {
+    let bestB = -1;
+    for (const dd of [-40, -20, 0, 20, 40]) {
       const probe = destinationPoint(start, baseDir + dd, target * 0.25);
       const bv = beautyAt(beauty, probe);
-      if (bv > best) {
-        best = bv;
+      if (bv > bestB) {
+        bestB = bv;
         dir = baseDir + dd;
       }
     }
@@ -557,9 +567,11 @@ async function addSpur(start, waypoints, shape, target, profile, beauty) {
   for (let i = 0; i < 7; i++) {
     const d = (lo + hi) / 2;
     const p = destinationPoint(start, dir, d);
+    const spur = { id: '_spur', lat: p.lat, lng: p.lng, _b: dir % 360, _d: d };
+    const seq = shape === 'loop' ? orderWaypoints([...waypoints, spur], shape) : [...waypoints, spur];
     let r;
     try {
-      r = await routeFor(start, [...waypoints, { id: '_spur', lat: p.lat, lng: p.lng }], shape, profile);
+      r = await routeFor(start, seq, shape, profile);
     } catch {
       hi = d; // spur point unroutable (water, etc.) — pull it closer
       continue;
